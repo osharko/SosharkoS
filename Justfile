@@ -118,5 +118,9 @@ test-products:
 test-vm:
     bash tests/test-vm.sh {{IMAGE_NAME}}:{{IMAGE_TAG}}
 
+# Tier 3 grafico: QEMU egl-headless+virtio-gpu → render desktop + audio (no HW reale)
+test-vm-gui:
+    bash tests/test-vm-gui.sh {{IMAGE_NAME}}:{{IMAGE_TAG}}
+
 # Gate locale completo: build + introspezione
 ci: build test

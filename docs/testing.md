@@ -10,8 +10,8 @@ display/hardware, e cosa è impensabile in CI. Pensato per essere **future-proof
 | | Livello | Dove gira | Esempi |
 |---|---|---|---|
 | 🟢 | **Headless-auto** | CI / `podman` / VM via SSH | presenza pacchetti, CLI funzionale, **decode** codec, container, k8s (k3d), mise, build, install-to-disk |
-| 🟡 | **Display/HW (semi-auto)** | VM con virtio-gpu + sessione Wayland + screenshot, o reale | **lancio** GUI app (codium/intellij/brave), render niri+noctalia, **playback** A/V (serve sink audio + framebuffer) |
-| 🔴 | **Solo umano / reale** | hardware fisico | VAAPI/Vulkan **hardware** decode, gaming Proton, **gamepad**, fingerprint, **1Password unlock**, bluetooth pairing, WinBoat (Windows+nested-KVM), suspend/brightness |
+| 🟡 | **Grafico — QEMU-auto** | QEMU `egl-headless` + `virtio-gpu-gl` + **QMP screendump** + **audio→wav** | render niri+noctalia (screenshot non-nero), **lancio** GUI app (codium/brave), **playback A/V** (video su framebuffer + audio catturato su wav, RMS≠0). NON serve HW reale. |
+| 🔴 | **Solo umano / reale** | hardware fisico / account / licenze | accel **GPU hardware** (VAAPI/Vulkan perf), gaming Proton *reale*, **gamepad** fisico, fingerprint, **1Password unlock** (account), Steam *libreria* (account), bluetooth pairing, **WinBoat** (licenza Windows), suspend/brightness laptop |
 
 > Regola: un test 🔴 NON va forzato in CI (darebbe falsi rossi). Va in una
 > **checklist umana** (sezione finale) con passi precisi e criterio di successo.
@@ -23,8 +23,8 @@ display/hardware, e cosa è impensabile in CI. Pensato per essere **future-proof
 | 0 | `bootc container lint` (in build) | immagine bootc valida, 1 solo kernel | 🟢 |
 | 1 | `test-image.sh` (`just test`) | **presenza** pacchetti/unit/file/encoder — *unit di esistenza* | 🟢 |
 | 2 | `integration.sh` (in VM via SSH) | **funzionale**: codec decode, container, k3d+k9s, distrobox, mise — *unit funzionali + integrazione* | 🟢 |
-| 3 | `gui-smoke.sh` (VM virtio-gpu + screenshot) | **lancio** GUI: codium/intellij/brave aprono un progetto | 🟡 |
-| 4 | `docs/testing.md` checklist umana | A/V playback, gaming, gamepad, vault, HW | 🔴 |
+| 3 | `test-vm-gui.sh` (QEMU egl-headless+virtio-gpu+screendump+audio-wav) | **render** desktop + **playback A/V** + lancio GUI — in QEMU, no HW reale | 🟡 |
+| 4 | checklist umana (sotto) | accel GPU, account (1P/Steam), licenze (WinBoat), sensori fisici | 🔴 |
 
 `test-vm.sh` orchestra: qcow2 (bootc-image-builder) → boot QEMU → SSH → esegue
 `smoke.sh`/`integration.sh`.
