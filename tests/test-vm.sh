@@ -29,14 +29,13 @@ fi
 
 # ─── chiave SSH effimera + config bootc-image-builder ───────────────
 [ -f "$SSH_KEY" ] || ssh-keygen -t ed25519 -N "" -f "$SSH_KEY" -q
+# NB: sshd.service è già 'enabled' nell'immagine → niente [customizations.services]
+# (non supportato per qcow2 da bootc-image-builder).
 cat > "$TMP/bib-config.toml" <<EOF
 [[customizations.user]]
 name = "tester"
 key = "$(cat "$SSH_KEY.pub")"
 groups = ["wheel"]
-
-[customizations.services]
-enabled = ["sshd.service"]
 EOF
 
 # ─── build qcow2 ────────────────────────────────────────────────────
@@ -47,7 +46,7 @@ sudo podman run --rm -it --privileged \
     -v "$TMP/bib-config.toml":/config.toml:ro \
     -v "$QCOW_DIR":/output \
     -v /var/lib/containers/storage:/var/lib/containers/storage \
-    "$BIB" --type qcow2 --rootfs btrfs --config /config.toml --local "$IMAGE"
+    "$BIB" --type qcow2 --rootfs btrfs --config /config.toml "localhost/$IMAGE"
 
 DISK="$(find "$QCOW_DIR" -name '*.qcow2' | head -1)"
 [ -n "$DISK" ] || { echo "✗ qcow2 non generato" >&2; exit 2; }
