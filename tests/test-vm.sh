@@ -37,6 +37,22 @@ name = "tester"
 password = "$(openssl passwd -6 sosharkos 2>/dev/null)"
 key = "$(cat "$SSH_KEY.pub")"
 groups = ["wheel"]
+
+# (SOLO per il test) autologin di tester in niri al boot, su vt1 con seat valido
+# → niri parte correttamente (seat/DRM-master), così grim può catturare.
+# L'immagine reale usa tuigreet (login); questo è un override di test baked.
+[[customizations.files]]
+path = "/etc/greetd/config.toml"
+data = """
+[terminal]
+vt = 1
+[initial_session]
+command = "env LIBGL_ALWAYS_SOFTWARE=1 niri-session"
+user = "tester"
+[default_session]
+command = "env LIBGL_ALWAYS_SOFTWARE=1 niri-session"
+user = "tester"
+"""
 EOF
 
 # ─── build qcow2 ────────────────────────────────────────────────────

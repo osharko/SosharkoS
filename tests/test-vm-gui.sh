@@ -54,7 +54,7 @@ qemu-system-x86_64 \
     -m 4096 -smp 2 -accel kvm \
     -drive file="$DISK",if=virtio,format=qcow2 \
     -nic user,hostfwd=tcp::${SSH_PORT}-:22 \
-    -vga none -device virtio-gpu-gl-pci -display egl-headless \
+    -vga none -device virtio-gpu-pci -display none \
     -audiodev wav,id=snd0,path="$AWAV" -device intel-hda -device hda-output,audiodev=snd0 \
     -qmp unix:"$QMP",server,nowait \
     -serial file:"$TMP/serial.log" &
@@ -67,51 +67,40 @@ ssh "${SSH[@]}" tester@localhost true 2>/dev/null || { no "ssh non disponibile (
 # sudo passwordless (bootstrap con la password una volta)
 ssh "${SSH[@]}" tester@localhost "echo sosharkos | sudo -S bash -c 'echo \"tester ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/99-test'" 2>/dev/null || true
 
-echo "▶ autologin per il test: greetd initial_session=tester (passwordless)…"
-ssh "${SSH[@]}" tester@localhost 'sudo tee /etc/greetd/config.toml >/dev/null <<EOF
-[terminal]
-vt = 1
-[initial_session]
-command = "niri-session"
-user = "tester"
-[default_session]
-command = "niri-session"
-user = "tester"
-EOF
-sudo systemctl restart greetd' 2>/dev/null || true
-echo "▶ attendo che niri renderizzi…"; sleep 30
+# autologin niri è BAKED nella qcow2 (test-vm.sh, customizations.files) → niri
+# parte già al boot su vt1 con seat valido. Aspettiamo che renderizzi.
+echo "▶ attendo che niri (autologin baked al boot) renderizzi…"; sleep 20
 
 echo "── diagnostica sessione grafica ──"
 ssh "${SSH[@]}" tester@localhost 'u=$(id -u tester); echo "tester uid=$u"; pgrep -u tester -x niri >/dev/null && echo "niri: UP" || echo "niri: DOWN"; ls /run/user/$u/wayland-* 2>/dev/null || echo "no wayland socket"; echo "--- journalctl greetd ---"; sudo journalctl -u greetd -n 20 --no-pager 2>/dev/null | tail -20' 2>/dev/null || true
 
-echo "── render desktop (screendump) ──"
-resp=""
-for _ in 1 2 3; do
-    [ -S "$QMP" ] && resp="$(qmp screendump "$SHOT" 2>&1)"
-    [ -s "$SHOT" ] && break
-    sleep 3
-done
-echo "  QMP screendump → ${resp:-<nessuna risposta>}"
+echo "── audio: avvio un suono nella sessione (gira in parallelo) ──"
+ssh "${SSH[@]}" tester@localhost 'export XDG_RUNTIME_DIR=/run/user/$(id -u); (timeout 6 pw-play /usr/share/sounds/freedesktop/stereo/bell.oga || timeout 6 speaker-test -t sine -f 440 -l 1) >/dev/null 2>&1' 2>/dev/null &
+
+echo "── render desktop (grim nella sessione niri) ──"
+SHOT="$TMP/desktop.png"
+ssh "${SSH[@]}" tester@localhost 'u=$(id -u); export XDG_RUNTIME_DIR=/run/user/$u; export WAYLAND_DISPLAY=$(ls /run/user/$u 2>/dev/null | grep -m1 -E "^wayland-[0-9]+$"); echo "outputs:"; niri msg outputs 2>/dev/null | grep -iE "Output|Current mode|Logical" | head -4; grim /tmp/shot.png 2>&1 | head -2' 2>/dev/null
+ssh "${SSH[@]}" tester@localhost 'cat /tmp/shot.png 2>/dev/null' > "$SHOT" 2>/dev/null
 if [ -s "$SHOT" ]; then
     yavg="$(ffmpeg -v error -i "$SHOT" -vf format=gray,signalstats -f null - 2>&1 | grep -oE 'YAVG:[0-9.]+' | head -1 | cut -d: -f2)"
-    # non-nero e non-uniforme → qualcosa è renderizzato
     if [ -n "$yavg" ] && awk "BEGIN{exit !($yavg>3)}"; then
-        ok "desktop renderizzato (screendump non nero, YAVG=$yavg) → $SHOT"
+        ok "desktop renderizzato (grim, non nero, YAVG=$yavg) → $SHOT"
     else
-        no "desktop nero/vuoto (YAVG=${yavg:-?}) — niri/noctalia non parte? vedi $SHOT"
+        no "desktop nero/uniforme (YAVG=${yavg:-?}) → $SHOT"
     fi
 else
-    no "screendump non catturato (QMP/virtio-gpu?)"
+    no "grim non ha prodotto un PNG (niri senza output? wlr-screencopy?)"
 fi
 
-echo "── audio playback (cattura wav) ──"
-# tono di test riprodotto nella sessione grafica (come utente greeter)
-ssh "${SSH[@]}" tester@localhost 'export XDG_RUNTIME_DIR=/run/user/$(id -u); timeout 5 pw-play /usr/share/sounds/freedesktop/stereo/bell.oga 2>/dev/null || timeout 5 speaker-test -t sine -f 440 -l 1 2>/dev/null' >/dev/null 2>&1 || true
-sleep 2
+echo "── spegnimento (flush wav) ──"
+ssh "${SSH[@]}" tester@localhost 'sudo poweroff' 2>/dev/null || true
+for _ in $(seq 1 25); do kill -0 "$QPID" 2>/dev/null || break; sleep 1; done
+
+echo "── audio playback (wav catturato dalla guest) ──"
 if [ -s "$AWAV" ]; then
     vol="$(ffmpeg -v error -i "$AWAV" -af volumedetect -f null - 2>&1 | grep -oE 'mean_volume: [-0-9.]+' | awk '{print $2}')"
-    if [ -n "$vol" ] && awk "BEGIN{exit !($vol>-90)}"; then
-        ok "audio catturato dalla guest (mean_volume ${vol} dB)"
+    if [ -n "$vol" ] && awk "BEGIN{exit !($vol>-91)}"; then
+        ok "audio uscito dalla guest (mean_volume ${vol} dB)"
     else
         no "audio muto (${vol:-?} dB) — sink pipewire/sessione?"
     fi
@@ -119,6 +108,5 @@ else
     no "nessun wav audio catturato"
 fi
 
-ssh "${SSH[@]}" tester@localhost 'sudo poweroff' 2>/dev/null || true
 echo; echo "════ GUI/QEMU: $pass ✓  $fail ✗ ════ (artefatti in $TMP)"
 [ "$fail" -eq 0 ]
