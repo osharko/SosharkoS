@@ -72,12 +72,14 @@ RUN dnf -y copr enable yalter/niri && \
 # dedicata) che CONFLIGGE con il quickshell di Fedora → NON installiamo quello.
 RUN dnf -y copr enable zhangyi6324/noctalia-shell && \
     dnf -y install noctalia-shell && dnf clean all
-RUN dnf -y install greetd && mkdir -p /etc/greetd && \
-    printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "niri-session"\nuser = "greeter"\n' \
+# greetd + tuigreet (greeter di login). tuigreet gira come utente di sistema
+# 'greetd' (creato dal pacchetto) e lancia niri-session come l'utente autenticato.
+# (BUG corretto: prima la config usava user="greeter" inesistente → desktop NON
+# partiva al boot; il test grafico QEMU l'ha beccato.)
+RUN dnf -y install greetd tuigreet && mkdir -p /etc/greetd && \
+    printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "tuigreet --time --remember --cmd niri-session"\nuser = "greetd"\n' \
         > /etc/greetd/config.toml && \
     systemctl enable greetd.service
-# TODO desktop: niri config di default in /etc/skel con
-#   spawn-at-startup "qs" "-c" "noctalia-shell"   (altrimenti niri parte "nudo")
 
 # ═════ Layer 4 · Plumbing desktop base (§8) ══════════════════════
 # fedora-bootc è minimale: audio/bt/gpu/polkit/power vanno aggiunti a mano.

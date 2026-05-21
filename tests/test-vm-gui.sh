@@ -30,13 +30,22 @@ DISK="$(find "$HERE/.tmp/qcow2" -name '*.qcow2' 2>/dev/null | head -1)"
 
 # ─── helper QMP (python3): esegue un comando e opzionale screendump ─
 qmp(){ python3 - "$QMP" "$1" "${2:-}" <<'PY'
-import socket,sys,json,time
+import socket,sys,json
 sock,cmd,arg=sys.argv[1],sys.argv[2],sys.argv[3]
-s=socket.socket(socket.AF_UNIX); s.connect(sock); s.recv(4096)
-s.sendall(b'{"execute":"qmp_capabilities"}\n'); s.recv(4096)
+s=socket.socket(socket.AF_UNIX); s.settimeout(15); s.connect(sock)
+def rl():
+    buf=b""
+    while b"\n" not in buf:
+        d=s.recv(4096)
+        if not d: break
+        buf+=d
+    return buf.decode(errors="replace").strip()
+rl()                                              # greeting
+s.sendall(b'{"execute":"qmp_capabilities"}\n'); rl()
 c={"execute":cmd}
 if arg: c["arguments"]={"filename":arg}
-s.sendall((json.dumps(c)+"\n").encode()); time.sleep(0.5); print(s.recv(4096).decode())
+s.sendall((json.dumps(c)+"\n").encode())
+print(rl())                                       # risposta (sync: file scritto al ritorno)
 PY
 }
 
@@ -46,7 +55,7 @@ qemu-system-x86_64 \
     -drive file="$DISK",if=virtio,format=qcow2 \
     -nic user,hostfwd=tcp::${SSH_PORT}-:22 \
     -vga none -device virtio-gpu-gl-pci -display egl-headless \
-    -audiodev wav,id=snd0,path="$AWAV" -device intel-hda -device hda-duplex,audiodev=snd0 \
+    -audiodev wav,id=snd0,path="$AWAV" -device intel-hda -device hda-output,audiodev=snd0 \
     -qmp unix:"$QMP",server,nowait \
     -serial file:"$TMP/serial.log" &
 QPID=$!
@@ -55,10 +64,34 @@ SSH=(-i "$SSH_KEY" -p "$SSH_PORT" -o StrictHostKeyChecking=no -o UserKnownHostsF
 echo -n "  attendo ssh"; for _ in $(seq 1 36); do ssh "${SSH[@]}" tester@localhost true 2>/dev/null && break; printf .; sleep 5; done; echo
 ssh "${SSH[@]}" tester@localhost true 2>/dev/null || { no "ssh non disponibile (vedi $TMP/serial.log)"; exit 3; }
 
-echo "▶ attendo che la sessione niri renderizzi…"; sleep 25
+# sudo passwordless (bootstrap con la password una volta)
+ssh "${SSH[@]}" tester@localhost "echo sosharkos | sudo -S bash -c 'echo \"tester ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/99-test'" 2>/dev/null || true
+
+echo "▶ autologin per il test: greetd initial_session=tester (passwordless)…"
+ssh "${SSH[@]}" tester@localhost 'sudo tee /etc/greetd/config.toml >/dev/null <<EOF
+[terminal]
+vt = 1
+[initial_session]
+command = "niri-session"
+user = "tester"
+[default_session]
+command = "niri-session"
+user = "tester"
+EOF
+sudo systemctl restart greetd' 2>/dev/null || true
+echo "▶ attendo che niri renderizzi…"; sleep 30
+
+echo "── diagnostica sessione grafica ──"
+ssh "${SSH[@]}" tester@localhost 'u=$(id -u tester); echo "tester uid=$u"; pgrep -u tester -x niri >/dev/null && echo "niri: UP" || echo "niri: DOWN"; ls /run/user/$u/wayland-* 2>/dev/null || echo "no wayland socket"; echo "--- journalctl greetd ---"; sudo journalctl -u greetd -n 20 --no-pager 2>/dev/null | tail -20' 2>/dev/null || true
 
 echo "── render desktop (screendump) ──"
-[ -S "$QMP" ] && qmp screendump "$SHOT" >/dev/null 2>&1
+resp=""
+for _ in 1 2 3; do
+    [ -S "$QMP" ] && resp="$(qmp screendump "$SHOT" 2>&1)"
+    [ -s "$SHOT" ] && break
+    sleep 3
+done
+echo "  QMP screendump → ${resp:-<nessuna risposta>}"
 if [ -s "$SHOT" ]; then
     yavg="$(ffmpeg -v error -i "$SHOT" -vf format=gray,signalstats -f null - 2>&1 | grep -oE 'YAVG:[0-9.]+' | head -1 | cut -d: -f2)"
     # non-nero e non-uniforme → qualcosa è renderizzato
@@ -73,7 +106,7 @@ fi
 
 echo "── audio playback (cattura wav) ──"
 # tono di test riprodotto nella sessione grafica (come utente greeter)
-ssh "${SSH[@]}" tester@localhost 'sudo -u greeter XDG_RUNTIME_DIR=/run/user/$(id -u greeter) WAYLAND_DISPLAY=wayland-1 timeout 4 pw-play /usr/share/sounds/freedesktop/stereo/bell.oga 2>/dev/null || sudo -u greeter timeout 4 speaker-test -t sine -f 440 -l 1 2>/dev/null' >/dev/null 2>&1 || true
+ssh "${SSH[@]}" tester@localhost 'export XDG_RUNTIME_DIR=/run/user/$(id -u); timeout 5 pw-play /usr/share/sounds/freedesktop/stereo/bell.oga 2>/dev/null || timeout 5 speaker-test -t sine -f 440 -l 1 2>/dev/null' >/dev/null 2>&1 || true
 sleep 2
 if [ -s "$AWAV" ]; then
     vol="$(ffmpeg -v error -i "$AWAV" -af volumedetect -f null - 2>&1 | grep -oE 'mean_volume: [-0-9.]+' | awk '{print $2}')"

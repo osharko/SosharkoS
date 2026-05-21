@@ -34,6 +34,7 @@ fi
 cat > "$TMP/bib-config.toml" <<EOF
 [[customizations.user]]
 name = "tester"
+password = "$(openssl passwd -6 sosharkos 2>/dev/null)"
 key = "$(cat "$SSH_KEY.pub")"
 groups = ["wheel"]
 EOF
@@ -72,6 +73,10 @@ done
 if ! ssh "${SSH_OPTS[@]}" tester@localhost true 2>/dev/null; then
     echo " ✗ SSH non disponibile — vedi $TMP/serial.log" >&2; exit 3
 fi
+
+# ─── sudo passwordless per il test (bootstrap con la password una volta) ──
+ssh "${SSH_OPTS[@]}" tester@localhost "echo sosharkos | sudo -S bash -c 'echo \"tester ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/99-test'" 2>/dev/null || true
+ssh "${SSH_OPTS[@]}" tester@localhost 'sudo -n true 2>/dev/null && echo "  sudo passwordless: OK" || echo "  sudo passwordless: NO"'
 
 # ─── esegue lo smoke dentro la VM ───────────────────────────────────
 echo "▶ smoke funzionale dentro la VM:"
