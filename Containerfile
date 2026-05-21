@@ -30,9 +30,20 @@ RUN dnf -y install \
 
 # ═════ Layer 2 · Kernel CachyOS + addons (COPR bieszczaders) ═════
 # F44: il devel è 'kernel-cachyos-devel-matched' (NON '*-headers').
+# In un build container lo scriptlet del kernel fa kernel-install→dracut e
+# fallisce (modules.dep assente). Lo scriptlet però SALTA se esiste
+# /run/ostree-booted → lo creiamo durante l'install (come su un sistema ostree),
+# poi rigeneriamo l'initramfs a build-time (depmod + dracut --kver). Validato.
 RUN dnf -y copr enable bieszczaders/kernel-cachyos && \
     dnf -y copr enable bieszczaders/kernel-cachyos-addons && \
-    dnf -y install kernel-cachyos kernel-cachyos-devel-matched cachyos-settings scx-scheds && \
+    touch /run/ostree-booted && \
+    dnf -y install --allowerasing \
+        kernel-cachyos kernel-cachyos-devel-matched cachyos-settings scx-scheds && \
+    rm -f /run/ostree-booted && \
+    KVER="$(ls /usr/lib/modules | grep cachyos | head -1)" && \
+    depmod -a "$KVER" && \
+    env DRACUT_NO_XATTR=1 dracut --no-hostonly --kver "$KVER" --reproducible \
+        --add ostree -f /usr/lib/modules/"$KVER"/initramfs.img && \
     dnf clean all
 
 # ═════ Layer 3 · Niri + Noctalia (COPR) + greetd ════════════════
