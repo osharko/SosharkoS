@@ -22,8 +22,8 @@ EXPECT_BINS=(
   op
   # antivirus (§6)
   clamscan freshclam rkhunter
-  # gaming (§7) — steam ora via Flatpak (non nell'image)
-  gamemoderun mangohud
+  # gaming (§7) — steam+mangohud ora via Flatpak (non nell'image)
+  gamemoderun
   # plumbing base (§8)
   pipewire wireplumber nmcli bluetoothctl brightnessctl playerctl
   # codec (§9)
