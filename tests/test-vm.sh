@@ -20,6 +20,13 @@ BIB="quay.io/centos-bootc/bootc-image-builder:latest"
 cleanup(){ [ -n "${QEMU_PID:-}" ] && kill "$QEMU_PID" 2>/dev/null || true; }
 trap cleanup EXIT
 
+# ─── bib gira rootful: porta l'immagine nello storage di root ───────
+# (se costruita rootless con `podman build`, root non la vede)
+if ! sudo podman image exists "$IMAGE"; then
+    echo "▶ copio l'immagine nello storage rootful (podman save | sudo load)…"
+    podman save "$IMAGE" | sudo podman load
+fi
+
 # ─── chiave SSH effimera + config bootc-image-builder ───────────────
 [ -f "$SSH_KEY" ] || ssh-keygen -t ed25519 -N "" -f "$SSH_KEY" -q
 cat > "$TMP/bib-config.toml" <<EOF
