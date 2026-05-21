@@ -48,6 +48,7 @@ sudo podman run --rm -it --privileged \
     -v /var/lib/containers/storage:/var/lib/containers/storage \
     "$BIB" --type qcow2 --rootfs btrfs --config /config.toml "localhost/$IMAGE"
 
+sudo chown -R "$(id -u):$(id -g)" "$QCOW_DIR"   # bib gira root → qcow2 root-owned
 DISK="$(find "$QCOW_DIR" -name '*.qcow2' | head -1)"
 [ -n "$DISK" ] || { echo "✗ qcow2 non generato" >&2; exit 2; }
 
