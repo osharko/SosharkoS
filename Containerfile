@@ -186,6 +186,12 @@ RUN chmod +x /usr/libexec/sosharkos-flatpak-setup && \
 COPY build_files/sosharkos-onboard.sh /usr/bin/sosharkos-onboard
 RUN chmod +x /usr/bin/sosharkos-onboard
 
+# Rootfs di default → immagine self-describing per `bootc install` / image-builder
+# (senza, bib/install richiedono --rootfs esplicito: "missing DefaultRootFs")
+RUN mkdir -p /usr/lib/bootc/install && \
+    printf '[install.filesystem.root]\ntype = "btrfs"\n' \
+        > /usr/lib/bootc/install/20-rootfs.toml
+
 COPY build_files/skel/ /etc/skel/
 
 RUN sed -i 's/^NAME="Fedora Linux"/NAME="SOsharkOS"/' /etc/os-release && \

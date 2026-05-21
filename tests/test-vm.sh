@@ -47,7 +47,7 @@ sudo podman run --rm -it --privileged \
     -v "$TMP/bib-config.toml":/config.toml:ro \
     -v "$QCOW_DIR":/output \
     -v /var/lib/containers/storage:/var/lib/containers/storage \
-    "$BIB" --type qcow2 --config /config.toml --local "$IMAGE"
+    "$BIB" --type qcow2 --rootfs btrfs --config /config.toml --local "$IMAGE"
 
 DISK="$(find "$QCOW_DIR" -name '*.qcow2' | head -1)"
 [ -n "$DISK" ] || { echo "✗ qcow2 non generato" >&2; exit 2; }
