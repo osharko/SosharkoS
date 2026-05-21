@@ -1,0 +1,5 @@
+# App Flatpak installate al PRIMO BOOT da sosharkos-flatpak-setup.service.
+# Una app-id per riga (# = commento). Aggiungine altre liberamente: vengono
+# installate da Flathub. Le restanti app GUI le installa l'utente da Bazaar.
+io.github.kolunmi.Bazaar
+com.bitwarden.desktop

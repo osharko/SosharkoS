@@ -1,0 +1,92 @@
+name: Build & push OCI image
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "README.md"
+      - "ROADMAP.md"
+      - "docs/**"
+      - ".vscode/**"
+  schedule:
+    # Cron daily 10:05 UTC — pulls latest fedora-bootc + Cachy kernel
+    - cron: "5 10 * * *"
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: sosharkos
+  REGISTRY: ghcr.io
+  REGISTRY_USER: ${{ github.repository_owner }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install buildah & skopeo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y buildah skopeo
+
+      - name: Set image tag (date + short sha)
+        id: tags
+        run: |
+          echo "date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+          echo "sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Build OCI image with buildah
+        run: |
+          buildah bud \
+            --tag ${{ env.IMAGE_NAME }}:latest \
+            --tag ${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.date }} \
+            --tag ${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.sha }} \
+            --file Containerfile \
+            .
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | buildah login -u ${{ env.REGISTRY_USER }} --password-stdin ${{ env.REGISTRY }}
+
+      - name: Push image (tutti i tag)
+        run: |
+          for tag in latest ${{ steps.tags.outputs.date }} ${{ steps.tags.outputs.sha }}; do
+            buildah push ${{ env.IMAGE_NAME }}:$tag \
+              docker://${{ env.REGISTRY }}/${{ env.REGISTRY_USER }}/${{ env.IMAGE_NAME }}:$tag
+          done
+
+      - name: Image digest
+        run: |
+          buildah inspect ${{ env.IMAGE_NAME }}:latest | jq '.Digest'
+
+  # Job opzionale: builda ISO e la mette come release artifact (limit 2GB/file
+  # → potrebbe fallire per immagini grosse; in tal caso skip release).
+  iso:
+    needs: build
+    if: github.event_name == 'workflow_dispatch'  # solo manuale, ISO costose
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ISO via bootc-image-builder
+        run: |
+          mkdir -p output
+          sudo podman run --rm --privileged \
+            --security-opt label=type:unconfined_t \
+            -v $(pwd)/output:/output \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            quay.io/centos-bootc/bootc-image-builder:latest \
+            --type iso --rootfs btrfs \
+            ghcr.io/${{ env.REGISTRY_USER }}/${{ env.IMAGE_NAME }}:latest
+      - name: Upload ISO as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sosharkos-iso
+          path: output/bootiso/install.iso
+          retention-days: 7

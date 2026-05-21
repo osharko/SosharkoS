@@ -1,0 +1,17 @@
+[Unit]
+Description=SOsharkOS — installa le app Flatpak di default al primo boot
+Documentation=https://github.com/ublue-os/image-template
+After=network-online.target
+Wants=network-online.target
+# Gira una sola volta: salta se il marker esiste già
+ConditionPathExists=!/var/lib/sosharkos/flatpaks-installed
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/sosharkos-flatpak-setup
+# Non bloccare il boot se Flathub è irraggiungibile
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

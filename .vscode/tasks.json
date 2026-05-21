@@ -1,0 +1,61 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "🔨 Build OCI image",
+            "type": "shell",
+            "command": "just build",
+            "group": { "kind": "build", "isDefault": true },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "📀 Build ISO",
+            "type": "shell",
+            "command": "just iso",
+            "dependsOn": "🔨 Build OCI image",
+            "presentation": { "reveal": "always", "panel": "dedicated" },
+            "problemMatcher": []
+        },
+        {
+            "label": "🖥️  Avvia VM di test",
+            "type": "shell",
+            "command": "just vm-up",
+            "presentation": { "reveal": "always" },
+            "problemMatcher": []
+        },
+        {
+            "label": "🔄 Ciclo completo (build+iso+vm)",
+            "type": "shell",
+            "command": "just cycle",
+            "presentation": { "reveal": "always", "panel": "dedicated" },
+            "problemMatcher": []
+        },
+        {
+            "label": "🧹 Cleanup totale",
+            "type": "shell",
+            "command": "just clean",
+            "presentation": { "reveal": "always" },
+            "problemMatcher": []
+        },
+        {
+            "label": "📊 Image size + layers",
+            "type": "shell",
+            "command": "just size && echo '---' && just layers | head -20",
+            "presentation": { "reveal": "always" },
+            "problemMatcher": []
+        },
+        {
+            "label": "🚀 Push GHCR (latest)",
+            "type": "shell",
+            "command": "just push latest",
+            "presentation": { "reveal": "always" },
+            "problemMatcher": []
+        }
+    ]
+}
