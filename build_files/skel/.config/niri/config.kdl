@@ -1,0 +1,61 @@
+// SOsharkOS — config niri di default. Personalizzala in ~/.config/niri/config.kdl
+// Avvia la shell Noctalia (qs = quickshell di noctalia-qs).
+spawn-at-startup "qs" "-c" "noctalia-shell"
+
+input {
+    keyboard {
+        xkb {
+            layout "it"
+        }
+    }
+    touchpad {
+        tap
+        natural-scroll
+    }
+    focus-follows-mouse
+}
+
+layout {
+    gaps 12
+    center-focused-column "never"
+    default-column-width { proportion 0.5; }
+}
+
+prefer-no-csd
+
+binds {
+    Mod+Return hotkey-overlay-title="Apri Terminale" { spawn "ghostty"; }
+    Mod+Q { close-window; }
+    Mod+Shift+Slash { show-hotkey-overlay; }
+
+    Mod+Left  { focus-column-left; }
+    Mod+Right { focus-column-right; }
+    Mod+Up    { focus-window-up; }
+    Mod+Down  { focus-window-down; }
+    Mod+H     { focus-column-left; }
+    Mod+L     { focus-column-right; }
+    Mod+J     { focus-window-down; }
+    Mod+K     { focus-window-up; }
+
+    Mod+Shift+Left  { move-column-left; }
+    Mod+Shift+Right { move-column-right; }
+
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+
+    Mod+F { maximize-column; }
+    Mod+Shift+F { fullscreen-window; }
+    Mod+R { switch-preset-column-width; }
+
+    Mod+Shift+E { quit; }
+
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.05+"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.05-"; }
+    XF86AudioMute        allow-when-locked=true { spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle"; }
+    XF86MonBrightnessUp   allow-when-locked=true { spawn "brightnessctl" "set" "5%+"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "set" "5%-"; }
+
+    Print { screenshot; }
+}

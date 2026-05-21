@@ -157,9 +157,11 @@ RUN dnf -y install clamav clamd clamav-update clamtk rkhunter chkrootkit && dnf 
 
 # ═════ Layer 6e · Gaming + controller + emulazione (§7/§15/§16) ══
 RUN dnf -y install \
-        gamemode mangohud steam-devices \
+        gamemode steam-devices \
         gamescope freerdp && \
     dnf clean all
+# mangohud → Flatpak extension (org.freedesktop.Platform.VulkanLayer.MangoHud)
+#   così l'overlay si inietta nei giochi Steam-flatpak (il nativo non lo fa).
 # Steam → Flatpak (com.valvesoftware.Steam): scarica il runtime al primo uso,
 #   immagine ~2-3 GB più leggera. Windows app → Bottles (flatpak, include wine)
 #   o WinBoat: niente wine nativo (~1.7 GB risparmiati).

@@ -8,3 +8,6 @@ com.jetbrains.IntelliJ-IDEA-Community
 com.usebottles.bottles
 com.rafaelmardojai.Blanket
 com.valvesoftware.Steam
+# overlay/post-fx per i giochi flatpak (Vulkan layer extensions)
+org.freedesktop.Platform.VulkanLayer.MangoHud
+org.freedesktop.Platform.VulkanLayer.vkBasalt
