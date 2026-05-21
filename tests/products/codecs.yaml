@@ -1,0 +1,35 @@
+product: codecs
+summary: ffmpeg pieno + decoder h264/HEVC/AV1/AAC (rpmfusion)
+category: codec
+package: ffmpeg
+tests:
+  - name: decoder h264/hevc/av1/aac presenti
+    level: headless
+    context: image
+    cmd: D=$(ffmpeg -hide_banner -decoders 2>/dev/null); for c in h264 hevc av1 aac; do echo "$D" | grep -qiw $c || exit 1; done
+  - name: encoder libx264/libx265 presenti
+    level: headless
+    context: image
+    cmd: E=$(ffmpeg -hide_banner -encoders 2>/dev/null); echo "$E" | grep -qw libx264 && echo "$E" | grep -qw libx265
+  - name: decode reale sample h264 (download + decode-to-null)
+    level: headless
+    context: vm
+    cmd: f=/tmp/h264.mp4; curl -fsSL --retry 2 -o $f https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4 && ffmpeg -v error -i $f -f null -
+  - name: decode reale sample HEVC
+    level: headless
+    context: vm
+    cmd: f=/tmp/hevc.mp4; curl -fsSL --retry 2 -o $f https://test-videos.co.uk/vids/bigbuckbunny/mp4/hevc/360/Big_Buck_Bunny_360_10s_1MB.mp4 && ffmpeg -v error -i $f -f null -
+  - name: decode reale sample AV1
+    level: headless
+    context: vm
+    cmd: f=/tmp/av1.mp4; curl -fsSL --retry 2 -o $f https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4 && ffmpeg -v error -i $f -f null -
+  - name: VAAPI hardware decode
+    level: human
+    steps: |
+      Su HW reale: `vainfo` elenca i profili; `mpv --hwdec=vaapi sample-hevc.mkv`
+      e con intel_gpu_top/radeontop verifica che decodifichi la GPU.
+      In qemu senza GPU passthrough NON è testabile (atteso).
+  - name: playback A/V percepito (video + audio)
+    level: human
+    steps: |
+      `mpv sample-hevc.mkv`: video fluido a schermo + audio udibile.

@@ -1,0 +1,18 @@
+product: emulation
+summary: Bottles (app Windows via Wine) + WinBoat (Windows in container)
+category: emulation
+flatpak: com.usebottles.bottles
+tests:
+  - name: Bottles flatpak presente (post 1° boot)
+    level: headless
+    context: vm
+    cmd: flatpak info com.usebottles.bottles
+  - name: app Windows via Bottles
+    level: human
+    steps: |
+      In Bottles crea un prefix e avvia un .exe semplice (es. Notepad++).
+  - name: WinBoat (Windows in container + RDP)
+    level: human
+    steps: |
+      Primo run di WinBoat scarica Windows (nested KVM); un'app Windows appare
+      come finestra Linux nativa. Richiede licenza/risorse → solo umano.

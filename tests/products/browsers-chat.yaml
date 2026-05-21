@@ -1,0 +1,16 @@
+product: browsers-chat
+summary: Brave (browser) + Telegram (chat) nativi
+category: editor
+tests:
+  - name: brave + telegram presenti
+    level: headless
+    context: image
+    cmd: command -v brave-browser && command -v Telegram
+  - name: brave apre una pagina
+    level: display
+    steps: |
+      `brave-browser https://example.com`: la pagina si carica e si vede.
+  - name: telegram login
+    level: human
+    steps: |
+      Telegram: login con numero/QR, le chat si caricano.

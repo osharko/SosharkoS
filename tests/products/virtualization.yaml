@@ -1,0 +1,14 @@
+product: virtualization
+summary: virt-manager + qemu-kvm-core + quickemu
+category: vm
+package: virt-manager
+tests:
+  - name: qemu + virt-manager + quickemu presenti
+    level: headless
+    context: image
+    cmd: command -v qemu-system-x86_64 && command -v virt-manager && command -v quickget
+  - name: boot di una VM (quickget/quickemu)
+    level: display
+    steps: |
+      `quickget ubuntu 24.04 && quickemu --vm ubuntu-24.04.conf`: la VM parte.
+      IP sulla LAN richiede bridge br0 (vedi docs/packages.md §13).

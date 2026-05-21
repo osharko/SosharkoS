@@ -1,0 +1,13 @@
+product: steam
+summary: Steam (Flatpak, 1° boot) + Proton
+category: gaming
+flatpak: com.valvesoftware.Steam
+tests:
+  - name: flatpak presente (post 1° boot)
+    level: headless
+    context: vm
+    cmd: flatpak info com.valvesoftware.Steam
+  - name: login + gioco con Proton
+    level: human
+    steps: |
+      Login Steam → installa/avvia un gioco con Proton; verifica che parta e giri.

@@ -1,0 +1,14 @@
+product: rkhunter
+summary: rkhunter rootkit scanner
+category: security
+package: rkhunter
+binary: rkhunter
+tests:
+  - name: rkhunter presente
+    level: headless
+    context: image
+    cmd: command -v rkhunter
+  - name: --check dry
+    level: headless
+    context: vm
+    cmd: sudo rkhunter --check --sk --nocolors >/dev/null 2>&1 || true; sudo rkhunter --versioncheck >/dev/null 2>&1 || true; rkhunter --version

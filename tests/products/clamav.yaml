@@ -1,0 +1,14 @@
+product: clamav
+summary: ClamAV scanner + ClamTk
+category: security
+package: clamav
+binary: clamscan
+tests:
+  - name: clamscan + clamtk presenti
+    level: headless
+    context: image
+    cmd: command -v clamscan && command -v clamtk
+  - name: rileva EICAR
+    level: headless
+    context: vm
+    cmd: printf 'X5O!P%%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > /tmp/eicar && clamscan --no-summary /tmp/eicar 2>/dev/null | grep -q FOUND; r=$?; rm -f /tmp/eicar; exit $r

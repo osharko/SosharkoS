@@ -1,0 +1,14 @@
+product: mise
+summary: mise (runtime per-progetto; canale onboarding)
+category: dev
+package: mise
+binary: mise
+tests:
+  - name: mise presente
+    level: headless
+    context: image
+    cmd: command -v mise
+  - name: install + run node@lts
+    level: headless
+    context: vm
+    cmd: mise use -g node@lts && mise exec -- node --version

@@ -1,0 +1,14 @@
+product: distrobox
+summary: distrobox (tool di altre distro senza toccare l'host)
+category: container
+package: distrobox
+binary: distrobox
+tests:
+  - name: distrobox presente
+    level: headless
+    context: image
+    cmd: command -v distrobox
+  - name: create + enter + exec (fedora)
+    level: headless
+    context: vm
+    cmd: distrobox create --name t --image registry.fedoraproject.org/fedora:latest --yes && distrobox enter t -- grep -q Fedora /etc/os-release; r=$?; distrobox rm -f t >/dev/null 2>&1; exit $r

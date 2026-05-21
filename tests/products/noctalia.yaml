@@ -1,0 +1,15 @@
+product: noctalia
+summary: shell Noctalia (noctalia-qs, COPR zhangyi6324) — bar/launcher/dock
+category: desktop
+package: noctalia-shell
+binary: qs
+tests:
+  - name: runtime qs (noctalia-qs) presente
+    level: headless
+    context: image
+    cmd: command -v qs
+  - name: bar/launcher Noctalia visibili
+    level: display
+    steps: |
+      Nella sessione niri la bar Noctalia appare in alto; il launcher si apre;
+      screenshot con grim per conferma.

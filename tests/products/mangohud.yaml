@@ -1,0 +1,13 @@
+product: mangohud
+summary: MangoHud overlay (Flatpak VulkanLayer extension)
+category: gaming
+flatpak: org.freedesktop.Platform.VulkanLayer.MangoHud
+tests:
+  - name: extension flatpak presente (post 1° boot)
+    level: headless
+    context: vm
+    cmd: flatpak list | grep -qi MangoHud
+  - name: overlay nei giochi flatpak
+    level: human
+    steps: |
+      In un gioco Steam (flatpak) abilita MangoHud → overlay FPS/stats visibile.

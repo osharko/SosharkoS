@@ -1,0 +1,15 @@
+product: vscodium
+summary: VSCodium (editor nativo)
+category: editor
+package: codium
+binary: codium
+tests:
+  - name: codium presente
+    level: headless
+    context: image
+    cmd: command -v codium
+  - name: apre un progetto (render finestra)
+    level: display
+    steps: |
+      Clona un repo via ssh, poi `codium <dir>`: la finestra si apre, l'albero
+      file è popolato. (Headless avanzato: VM virtio-gpu + grim screenshot.)

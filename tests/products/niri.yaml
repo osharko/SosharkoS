@@ -1,0 +1,19 @@
+product: niri
+summary: compositore Wayland Niri + config di default
+category: desktop
+package: niri
+binary: niri
+tests:
+  - name: niri presente
+    level: headless
+    context: image
+    cmd: command -v niri
+  - name: config di default valida
+    level: headless
+    context: image
+    cmd: niri validate -c /etc/skel/.config/niri/config.kdl
+  - name: sessione niri parte e mostra
+    level: display
+    steps: |
+      Boot reale (o VM virtio-gpu): greetd → niri-session parte, sfondo + cursore.
+      `niri msg version` da un terminale dentro la sessione.

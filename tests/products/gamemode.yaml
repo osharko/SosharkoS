@@ -1,0 +1,14 @@
+product: gamemode
+summary: gamemode (daemon performance, nativo)
+category: gaming
+package: gamemode
+tests:
+  - name: gamemoderun/gamemoded presenti
+    level: headless
+    context: image
+    cmd: command -v gamemoderun && command -v gamemoded
+  - name: boost attivo in gioco
+    level: human
+    steps: |
+      Avvia un gioco con `gamemoderun` (o Steam launch option); `gamemoded -s`
+      mostra lo stato attivo.

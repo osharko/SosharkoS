@@ -1,0 +1,18 @@
+product: docker
+summary: moby-engine (docker daemon) + docker.socket
+category: container
+package: moby-engine
+binary: docker
+tests:
+  - name: binario docker presente
+    level: headless
+    context: image
+    cmd: command -v docker
+  - name: docker.socket abilitato
+    level: headless
+    context: image
+    cmd: systemctl is-enabled docker.socket
+  - name: docker run hello-world
+    level: headless
+    context: vm
+    cmd: for i in 1 2 3 4 5 6; do sudo docker run --rm hello-world >/dev/null 2>&1 && exit 0; sleep 5; done; exit 1

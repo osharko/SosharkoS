@@ -1,0 +1,13 @@
+product: controllers
+summary: steam-devices (udev) + xpadneo/xone (akmod)
+category: gaming
+package: steam-devices
+tests:
+  - name: regole udev steam-devices presenti
+    level: headless
+    context: image
+    cmd: rpm -q steam-devices
+  - name: gamepad riconosciuto
+    level: human
+    steps: |
+      Collega un pad → `evtest` lo elenca → input funziona in un gioco.

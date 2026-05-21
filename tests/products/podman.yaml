@@ -1,0 +1,14 @@
+product: podman
+summary: podman + buildah + skopeo (runtime rootless, backend distrobox)
+category: container
+package: podman
+binary: podman
+tests:
+  - name: binari podman/buildah/skopeo presenti
+    level: headless
+    context: image
+    cmd: command -v podman && command -v buildah && command -v skopeo
+  - name: podman run hello-world
+    level: headless
+    context: vm
+    cmd: podman run --rm hello-world

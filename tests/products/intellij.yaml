@@ -1,0 +1,14 @@
+product: intellij
+summary: IntelliJ IDEA Community (Flatpak, 1° boot)
+category: editor
+flatpak: com.jetbrains.IntelliJ-IDEA-Community
+tests:
+  - name: flatpak presente (post 1° boot)
+    level: headless
+    context: vm
+    cmd: flatpak info com.jetbrains.IntelliJ-IDEA-Community
+  - name: apre un progetto
+    level: human
+    steps: |
+      `flatpak run com.jetbrains.IntelliJ-IDEA-Community`: apri la dir del repo,
+      l'IDE indicizza e mostra il progetto. (Pesante → validazione umana.)

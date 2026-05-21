@@ -1,0 +1,8 @@
+product: fonts
+summary: JetBrains Mono / Cascadia / FontAwesome / Noto (+ Nerd)
+category: font
+tests:
+  - name: famiglie font installate
+    level: headless
+    context: image
+    cmd: L=$(fc-list); echo "$L" | grep -qi jetbrains && echo "$L" | grep -qi cascadia && echo "$L" | grep -qi noto

@@ -1,0 +1,17 @@
+product: kubernetes
+summary: kubectl + cluster via k3d (k3s-in-docker) + k9s
+category: k8s
+binary: kubectl
+tests:
+  - name: kubectl client
+    level: headless
+    context: image
+    cmd: kubectl version --client
+  - name: k3d cluster + nodo Ready + kubectl
+    level: headless
+    context: vm
+    cmd: K=/tmp/k3d; [ -x $K ] || { curl -fsSL -o $K https://github.com/k3d-io/k3d/releases/latest/download/k3d-linux-amd64 && chmod +x $K; }; sudo $K cluster create t --wait --timeout 120s && export KUBECONFIG=$(mktemp) && sudo $K kubeconfig get t > $KUBECONFIG && kubectl get nodes | grep -q ' Ready '; r=$?; sudo $K cluster delete t >/dev/null 2>&1; exit $r
+  - name: k9s legge il cluster (info)
+    level: headless
+    context: vm
+    cmd: command -v k9s && k9s info

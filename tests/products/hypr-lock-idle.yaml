@@ -1,0 +1,12 @@
+product: hypr-lock-idle
+summary: hyprlock + hypridle + hyprpicker (lock/idle/color-picker per Niri)
+category: desktop
+tests:
+  - name: hyprlock/hypridle/hyprpicker presenti
+    level: headless
+    context: image
+    cmd: command -v hyprlock && command -v hypridle && command -v hyprpicker
+  - name: lock reale
+    level: display
+    steps: |
+      Nella sessione: `hyprlock` blocca lo schermo; sblocco con password ok.

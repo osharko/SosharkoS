@@ -110,6 +110,10 @@ layers:
 test:
     bash tests/test-image.sh {{IMAGE_NAME}}:{{IMAGE_TAG}}
 
+# Test per-prodotto (descrittori tests/products/*.yaml) — contesto image
+test-products:
+    bash tests/run-products.sh --context image --image {{IMAGE_NAME}}:{{IMAGE_TAG}}
+
 # Tier 2/3: build qcow2 → boot QEMU headless → smoke funzionale via SSH
 test-vm:
     bash tests/test-vm.sh {{IMAGE_NAME}}:{{IMAGE_TAG}}

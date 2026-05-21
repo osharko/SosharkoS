@@ -1,0 +1,12 @@
+product: markdown
+summary: Obsidian + Mark Text (Flatpak, 1° boot)
+category: editor
+tests:
+  - name: flatpak presenti (post 1° boot)
+    level: headless
+    context: vm
+    cmd: flatpak info md.obsidian.Obsidian && flatpak info com.github.marktext.marktext
+  - name: aprono un .md
+    level: display
+    steps: |
+      Mark Text apre un file .md al volo (no vault); Obsidian apre un vault.

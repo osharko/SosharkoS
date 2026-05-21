@@ -1,44 +1,53 @@
 #!/usr/bin/env bash
 # Tier 2/3 — smoke FUNZIONALE, da eseguire DENTRO il sistema avviato
-# (VM via test-vm.sh, o a mano dopo l'install). Verifica che le cose non solo
-# siano installate ma FUNZIONINO: servizi su, runtime operativi, codec ok.
+# (VM via test-vm.sh, o a mano post-install). Verifica che le cose FUNZIONINO,
+# non solo che siano installate.
 set -uo pipefail
 
 pass=0; fail=0; warn=0
-ok(){   printf '  \033[32m✓\033[0m %s\n' "$1"; pass=$((pass+1)); }
-no(){   printf '  \033[31m✗ FAIL\033[0m %s\n' "$1"; fail=$((fail+1)); }
-wn(){   printf '  \033[33m! WARN\033[0m %s\n' "$1"; warn=$((warn+1)); }
+ok(){ printf '  \033[32m✓\033[0m %s\n' "$1"; pass=$((pass+1)); }
+no(){ printf '  \033[31m✗ FAIL\033[0m %s\n' "$1"; fail=$((fail+1)); }
+wn(){ printf '  \033[33m! WARN\033[0m %s\n' "$1"; warn=$((warn+1)); }
+retry(){ local n=$1; shift; for i in $(seq 1 "$n"); do "$@" && return 0; sleep 5; done; return 1; }
 
-echo "── systemd ──"
-state="$(systemctl is-system-running 2>/dev/null || true)"
+echo "── systemd (attendo che finisca il boot) ──"
+state=""
+for _ in $(seq 1 24); do                      # max ~2 min
+    state="$(systemctl is-system-running 2>/dev/null || true)"
+    case "$state" in running|degraded) break;; esac
+    sleep 5
+done
 case "$state" in
-    running)  ok "system is-system-running ($state)";;
-    degraded) wn "system degraded — unit fallite: $(systemctl --failed --no-legend | awk '{print $1}' | tr '\n' ' ')";;
-    *)        no "system stato='$state'";;
+    running)  ok "system is-system-running (running)";;
+    degraded) wn "system degraded — falliti: $(systemctl --failed --no-legend 2>/dev/null | awk '{print $1}' | tr '\n' ' ')";;
+    *)        no "system stato='$state' (non ha finito il boot)";;
 esac
 
-echo "── servizi chiave attivi ──"
-for u in NetworkManager.service bluetooth.service docker.socket libvirtd.service; do
-    systemctl is-active --quiet "$u" && ok "active $u" || wn "non active $u"
+echo "── servizi chiave ──"
+systemctl is-active --quiet NetworkManager.service && ok "active NetworkManager" || no "NetworkManager non active"
+systemctl is-active --quiet docker.socket && ok "active docker.socket" || no "docker.socket non active"
+for u in bluetooth.service libvirtd.service; do
+    systemctl is-active --quiet "$u" && ok "active $u" || wn "non active $u (atteso in VM/headless)"
 done
-# pipewire è user-service: controllo nella sessione utente
-systemctl --user is-active --quiet pipewire 2>/dev/null && ok "active pipewire (user)" || wn "pipewire user non rilevato (serve sessione utente)"
+systemctl --user is-active --quiet pipewire 2>/dev/null && ok "pipewire (user)" || wn "pipewire user non rilevato (serve sessione grafica)"
 
 echo "── runtime funzionali ──"
-docker run --rm hello-world >/dev/null 2>&1 && ok "docker run hello-world" || no "docker non funziona"
+retry 6 sudo docker run --rm hello-world >/dev/null 2>&1 && ok "docker run hello-world" || no "docker run (rete/daemon)"
 distrobox version >/dev/null 2>&1 && ok "distrobox version" || no "distrobox ko"
 kubectl version --client >/dev/null 2>&1 && ok "kubectl client" || no "kubectl ko"
 mise --version >/dev/null 2>&1 && ok "mise" || no "mise ko"
-flatpak remotes 2>/dev/null | grep -qi flathub && ok "flathub remote presente" || wn "flathub non ancora configurato (first-boot?)"
+flatpak remotes 2>/dev/null | grep -qi flathub && ok "flathub remote (first-boot ok)" || wn "flathub non ancora configurato"
 
 echo "── desktop bits ──"
 niri --version >/dev/null 2>&1 && ok "niri" || no "niri ko"
-command -v noctalia-shell >/dev/null && ok "noctalia-shell presente" || wn "noctalia-shell assente"
+command -v qs >/dev/null && ok "qs (noctalia-qs) presente" || wn "qs assente"
 
-echo "── codec ──"
-ffmpeg -hide_banner -encoders 2>/dev/null | grep -qw libx264 && ok "ffmpeg libx264" || no "codec h264 mancante (RPM Fusion?)"
-# VAAPI hardware decode (presente se §9 applicata + GPU esposta dalla VM)
-command -v vainfo >/dev/null && { vainfo >/dev/null 2>&1 && ok "vainfo VAAPI" || wn "vainfo ko (normale in VM senza GPU passthrough)"; } || wn "vainfo non installato (libva-utils)"
+echo "── codec (decoder, ciò che serve al playback) ──"
+decs="$(ffmpeg -hide_banner -decoders 2>/dev/null)"
+for c in h264 hevc av1 aac; do
+    grep -qiw "$c" <<<"$decs" && ok "decoder $c" || no "decoder $c mancante"
+done
+command -v vainfo >/dev/null && { vainfo >/dev/null 2>&1 && ok "vainfo VAAPI" || wn "vainfo ko (normale in VM senza GPU)"; } || wn "vainfo assente"
 
 echo
 echo "════ smoke: $pass ✓   $warn !   $fail ✗ ════"
