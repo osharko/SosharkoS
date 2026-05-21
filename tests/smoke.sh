@@ -17,10 +17,15 @@ for _ in $(seq 1 24); do                      # max ~2 min
     case "$state" in running|degraded) break;; esac
     sleep 5
 done
+failed="$(systemctl --failed --no-legend 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
 case "$state" in
     running)  ok "system is-system-running (running)";;
-    degraded) wn "system degraded — falliti: $(systemctl --failed --no-legend 2>/dev/null | awk '{print $1}' | tr '\n' ' ')";;
-    *)        no "system stato='$state' (non ha finito il boot)";;
+    degraded) wn "system degraded — unit fallite: $failed";;
+    *)  if [ -z "$failed" ]; then
+            wn "system '$state' (boot non ancora finito — es. flatpak first-boot in download; nessuna unit fallita)"
+        else
+            no "system '$state' con unit FALLITE: $failed"
+        fi;;
 esac
 
 echo "── servizi chiave ──"
