@@ -28,6 +28,22 @@ RUN dnf -y install \
     dnf config-manager setopt fedora-cisco-openh264.enabled=1 2>/dev/null || true; \
     dnf clean all
 
+# ═════ Layer 1b · Multimedia & GPU PIENO — PRIMA del desktop (§9) ═
+# La base fedora-bootc:44 NON ha ffmpeg-free né mesa → installiamo SUBITO lo
+# stack pieno (ffmpeg rpmfusion + mesa freeworld) così tutto il resto si
+# installa già contro questi. Farlo DOPO il desktop con `dnf swap --allowerasing`
+# causava un cascade -346 pacchetti (rimuoveva niri/noctalia/qt6-multimedia…).
+RUN dnf -y install \
+        ffmpeg \
+        mesa-dri-drivers mesa-va-drivers-freeworld mesa-vulkan-drivers-freeworld vulkan-loader \
+        gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugins-bad-freeworld \
+        gstreamer1-plugins-ugly gstreamer1-plugin-openh264 gstreamer1-libav \
+        libavcodec-freeworld \
+        x265 svt-av1 fdk-aac-free \
+        openh264 mozilla-openh264 \
+        libva-utils && \
+    dnf clean all
+
 # ═════ Layer 2 · Kernel CachyOS + addons (COPR bieszczaders) ═════
 # F44: il devel è 'kernel-cachyos-devel-matched' (NON '*-headers').
 # In un build container lo scriptlet del kernel fa kernel-install→dracut e
@@ -69,27 +85,10 @@ RUN dnf -y install \
         pipewire wireplumber pipewire-pulseaudio pipewire-alsa \
         NetworkManager NetworkManager-wifi \
         bluez bluez-tools \
-        mesa-dri-drivers mesa-vulkan-drivers vulkan-loader mesa-va-drivers \
         polkit \
         power-profiles-daemon brightnessctl playerctl \
         xdg-desktop-portal xdg-user-dirs xdg-utils \
         gnome-keyring libsecret seahorse && \
-    dnf clean all
-
-# ═════ Layer 1b · Codec multimedia pieni (§9) ════════════════════
-# ffmpeg-free → ffmpeg pieno; mesa va/vulkan → freeworld (HW decode);
-# gstreamer plugins; HEVC(x265)/AV1(svt-av1)/AAC(fdk-aac-free).
-# (VDPAU rimosso: mesa-vdpau-drivers non più pacchettizzato su F44; VA-API basta.)
-RUN dnf -y swap --allowerasing ffmpeg-free ffmpeg && \
-    dnf -y swap --allowerasing mesa-va-drivers mesa-va-drivers-freeworld && \
-    dnf -y install \
-        gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugins-bad-freeworld \
-        gstreamer1-plugins-ugly gstreamer1-plugin-openh264 gstreamer1-libav \
-        libavcodec-freeworld \
-        x265 svt-av1 fdk-aac-free \
-        openh264 mozilla-openh264 \
-        libva-utils && \
-    dnf -y swap --allowerasing mesa-vulkan-drivers mesa-vulkan-drivers-freeworld 2>/dev/null || true; \
     dnf clean all
 
 # ═════ Layer 5 · LAUNCHPAD (§4) ══════════════════════════════════
@@ -116,6 +115,7 @@ RUN dnf -y copr enable scottames/ghostty && \
         bat eza fd-find ripgrep fzf jq yq gum chafa \
         git git-delta neovim tmux direnv aria2 zoxide \
         dust duf procs tealdeer qt6ct cliphist \
+        gcc make \
         wl-clipboard grim slurp && \
     dnf clean all
 
@@ -179,6 +179,10 @@ COPY build_files/sosharkos-flatpak-setup.sh /usr/libexec/sosharkos-flatpak-setup
 COPY build_files/sosharkos-flatpak-setup.service /usr/lib/systemd/system/sosharkos-flatpak-setup.service
 RUN chmod +x /usr/libexec/sosharkos-flatpak-setup && \
     systemctl enable sosharkos-flatpak-setup.service
+
+# Onboarding primo login (§17): brew/mise/flatpak/distrobox opzionali
+COPY build_files/sosharkos-onboard.sh /usr/bin/sosharkos-onboard
+RUN chmod +x /usr/bin/sosharkos-onboard
 
 COPY build_files/skel/ /etc/skel/
 

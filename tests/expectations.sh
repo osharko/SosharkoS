@@ -11,8 +11,10 @@
 EXPECT_BINS=(
   # desktop & shell core
   niri fish alacritty ghostty starship
-  # terminal utils (§2)
-  bat eza fd rg fzf jq yq gum chafa mdcat
+  # terminal utils (§2) — mdcat/lazygit via onboarding (mise/brew), non nell'image
+  bat eza fd rg fzf jq yq gum chafa
+  # emulazione/traduzione (§16)
+  wine winetricks gamescope
   # launchpad (§4)
   podman docker buildah skopeo distrobox
   kubectl virt-manager quickemu quickget mise flatpak
@@ -36,14 +38,14 @@ EXPECT_BINS=(
 EXPECT_RPMS=(
   # kernel + desktop
   kernel-cachyos cachyos-settings scx-scheds
-  niri noctalia-shell quickshell greetd
+  niri noctalia-shell noctalia-qs greetd
   # plumbing (§8)
   pipewire wireplumber pipewire-pulseaudio
   NetworkManager bluez polkit
-  mesa-vulkan-drivers vulkan-loader
+  mesa-vulkan-drivers-freeworld vulkan-loader
   power-profiles-daemon gnome-keyring
   # launchpad (§4)
-  moby-engine distrobox kubernetes-client
+  moby-engine distrobox
   virt-manager qemu-kvm mise flatpak
   # vault + av
   1password 1password-cli clamav rkhunter
