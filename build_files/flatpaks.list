@@ -1,9 +1,10 @@
 # App Flatpak installate al PRIMO BOOT da sosharkos-flatpak-setup.service.
 # Una app-id per riga (# = commento). Le restanti app GUI le installa l'utente
-# da Bazaar. Vedi docs/packages.md §3/§12/§16.
+# da Bazaar. Vedi docs/packages.md §3/§7/§12/§16.
 io.github.kolunmi.Bazaar
 md.obsidian.Obsidian
 com.github.marktext.marktext
 com.jetbrains.IntelliJ-IDEA-Community
 com.usebottles.bottles
 com.rafaelmardojai.Blanket
+com.valvesoftware.Steam

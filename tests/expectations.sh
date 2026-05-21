@@ -13,8 +13,8 @@ EXPECT_BINS=(
   niri fish alacritty ghostty starship
   # terminal utils (§2) — mdcat/lazygit via onboarding (mise/brew), non nell'image
   bat eza fd rg fzf jq yq gum chafa
-  # emulazione/traduzione (§16)
-  wine winetricks gamescope
+  # emulazione/traduzione (§16) — wine via Bottles (flatpak), non nell'image
+  gamescope
   # launchpad (§4)
   podman docker buildah skopeo distrobox
   kubectl virt-manager quickemu quickget mise flatpak
@@ -22,8 +22,8 @@ EXPECT_BINS=(
   op
   # antivirus (§6)
   clamscan freshclam rkhunter
-  # gaming (§7)
-  steam gamemoderun mangohud
+  # gaming (§7) — steam ora via Flatpak (non nell'image)
+  gamemoderun mangohud
   # plumbing base (§8)
   pipewire wireplumber nmcli bluetoothctl brightnessctl playerctl
   # codec (§9)
@@ -86,4 +86,5 @@ EXPECT_FLATPAKS=(
   md.obsidian.Obsidian
   com.github.marktext.marktext
   com.jetbrains.IntelliJ-IDEA-Community
+  com.valvesoftware.Steam
 )

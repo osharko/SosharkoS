@@ -97,7 +97,7 @@ RUN dnf -y install \
         podman buildah skopeo podman-compose \
         moby-engine distrobox \
         kubernetes-client \
-        virt-manager qemu-kvm libvirt-daemon-driver-qemu libvirt-client quickemu \
+        virt-manager qemu-kvm-core qemu-img libvirt-daemon-driver-qemu libvirt-client quickemu \
         flatpak && \
     dnf clean all && \
     systemctl enable docker.socket podman.socket libvirtd.service
@@ -137,9 +137,7 @@ RUN rpmkeys --import https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo/raw/ma
     printf '[gitlab.com_paulcarroty_vscodium_repo]\nname=VSCodium\nbaseurl=https://download.vscodium.com/rpms/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo/raw/master/pub.gpg\n' \
         > /etc/yum.repos.d/vscodium.repo && \
     dnf -y install codium && dnf clean all
-RUN rpmkeys --import https://download.sublimetext.com/sublimehq-rpm-pub.gpg && \
-    dnf config-manager addrepo --from-repofile=https://download.sublimetext.com/rpm/stable/x86_64/sublime-text.repo && \
-    dnf -y install sublime-text && dnf clean all
+# Sublime Text rimosso dall'immagine (no flatpak ufficiale): editor = VSCodium.
 RUN dnf config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo && \
     dnf -y install brave-browser && dnf clean all
 RUN dnf -y install mpv imv evince telegram-desktop && dnf clean all
@@ -159,10 +157,12 @@ RUN dnf -y install clamav clamd clamav-update clamtk rkhunter chkrootkit && dnf 
 
 # ═════ Layer 6e · Gaming + controller + emulazione (§7/§15/§16) ══
 RUN dnf -y install \
-        steam gamemode mangohud steam-devices \
-        gamescope \
-        wine winetricks freerdp && \
+        gamemode mangohud steam-devices \
+        gamescope freerdp && \
     dnf clean all
+# Steam → Flatpak (com.valvesoftware.Steam): scarica il runtime al primo uso,
+#   immagine ~2-3 GB più leggera. Windows app → Bottles (flatpak, include wine)
+#   o WinBoat: niente wine nativo (~1.7 GB risparmiati).
 # TODO §15: xpadneo/xone (Xbox wireless) via akmod contro kernel CachyOS — da
 # validare; fallback steam-devices (sopra) già attivo.
 
