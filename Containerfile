@@ -37,7 +37,8 @@ RUN dnf -y install \
 RUN dnf -y copr enable bieszczaders/kernel-cachyos && \
     dnf -y copr enable bieszczaders/kernel-cachyos-addons && \
     touch /run/ostree-booted && \
-    dnf -y install --allowerasing \
+    dnf -y remove kernel kernel-core kernel-modules kernel-modules-core && \
+    dnf -y install \
         kernel-cachyos kernel-cachyos-devel-matched cachyos-settings scx-scheds && \
     rm -f /run/ostree-booted && \
     KVER="$(ls /usr/lib/modules | grep cachyos | head -1)" && \
@@ -45,6 +46,7 @@ RUN dnf -y copr enable bieszczaders/kernel-cachyos && \
     env DRACUT_NO_XATTR=1 dracut --no-hostonly --kver "$KVER" --reproducible \
         --add ostree -f /usr/lib/modules/"$KVER"/initramfs.img && \
     dnf clean all
+# (stock kernel rimosso → /usr/lib/modules contiene SOLO cachyos: bootc lint ok)
 
 # ═════ Layer 3 · Niri + Noctalia (COPR) + greetd ════════════════
 RUN dnf -y copr enable yalter/niri && \
