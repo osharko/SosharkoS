@@ -194,7 +194,14 @@ Scenari composti, eseguiti in VM (`integration.sh`):
    `expectations.sh` (unit) e, se sensato, in `integration.sh`.
 
 ## Stato corrente dei test
-- Tier 0 `bootc lint`: ✅ · Tier 1 `test-image.sh`: ✅ **92/0**
-- `test-vm.sh`: ✅ build qcow2 + **boot + SSH**; `smoke.sh` 7✓/5!/3✗ (i ✗ sono
-  timing/test-bug, non difetti immagine — vedi action plan per renderlo robusto)
-- Tier 2 `integration.sh` / Tier 3 `gui-smoke.sh` / install-to-disk: ⬜ da creare
+- Tier 0 `bootc lint`: ✅ · Tier 1 `test-image.sh`: ✅ **92/0** · per-prodotto
+  (image): ✅ **21/0**
+- Tier 2 `test-vm.sh` → `smoke.sh`: ✅ **14✓/4!/0✗** (boot + SSH + docker +
+  distrobox + kubectl + mise + flathub + decoder h264/hevc/av1/aac; i WARN sono
+  bluetooth/libvirtd/pipewire-user/vainfo, attesi in VM headless)
+- **Tier 3 grafico `test-vm-gui.sh`: ✅ render desktop VALIDATO in QEMU** —
+  niri+Noctalia renderizzano (grim 1280×800, screenshot reale), `bootc lint` ok.
+  Audio QEMU = WARN (routing pipewire→hda da rifinire; audio reale su HW).
+  *Bug REALI scoperti da questo tier:* greeter user inesistente (→ tuigreet),
+  test-user senza sudo (→ password+NOPASSWD).
+- ⬜ da creare: `integration.sh` esecuzione in VM (k3d/k9s), `install-to-disk.sh`
