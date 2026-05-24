@@ -34,7 +34,7 @@ sk(){ printf '    \033[33m· skip\033[0m %s (%s)\n' "$1" "$2"; skip=$((skip+1));
 
 run_cmd(){  # esegue $1 nel contesto scelto
     case "$CONTEXT" in
-        image) podman run --rm --entrypoint "" "$IMAGE" bash -lc "$1" >/dev/null 2>&1 ;;
+        image) podman run --rm --network=none --entrypoint "" "$IMAGE" bash -lc "$1" >/dev/null 2>&1 ;;
         vm)    [ -n "$SSHCMD" ] && $SSHCMD "bash -lc '$1'" >/dev/null 2>&1 ;;
     esac
 }

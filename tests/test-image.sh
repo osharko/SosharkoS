@@ -16,7 +16,9 @@ ok(){ printf '  \033[32m✓\033[0m %s\n' "$1"; pass=$((pass+1)); }
 no(){ printf '  \033[31m✗ FAIL\033[0m %s\n' "$1"; fail=$((fail+1)); }
 
 # Esegue uno snippet bash dentro l'immagine (entrypoint neutralizzato).
-inimg(){ podman run --rm --entrypoint "" "$IMAGE" bash -lc "$1" 2>/dev/null; }
+# --network=none: i check non usano rete + evita fallimenti di setup rete
+# rootless (slirp/pasta) su runner CI → altrimenti OGNI podman run fallirebbe.
+inimg(){ podman run --rm --network=none --entrypoint "" "$IMAGE" bash -lc "$1" 2>/dev/null; }
 
 echo "▶ Test immagine: $IMAGE"
 if ! podman image exists "$IMAGE"; then
