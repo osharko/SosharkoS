@@ -15,6 +15,8 @@ EXPECT_BINS=(
   bat eza fd rg fzf jq yq gum chafa
   # emulazione/traduzione (§16) — wine via Bottles (flatpak), non nell'image
   gamescope waydroid
+  # androidbox: helper UX Android a livello OS (§16)
+  androidbox-start androidbox-stop androidbox-status
   # launchpad (§4)
   podman docker buildah skopeo distrobox
   kubectl virt-manager quickemu quickget mise flatpak
@@ -65,6 +67,13 @@ EXPECT_UNITS_ENABLED=(
   podman.socket
   libvirtd.service
   sosharkos-flatpak-setup.service
+)
+
+# ─── Unit systemd che NON devono risultare 'enabled' (opt-in a runtime) ──────
+# waydroid-container.service: ships DISABILITATO di default (§16/androidbox).
+# Si attiva con `androidbox-start` (enable --now), persiste al boot; off con
+# `androidbox-stop`. Zero consumo finché l'utente non opta-in.
+EXPECT_UNITS_NOT_ENABLED=(
   waydroid-container.service
 )
 
@@ -75,6 +84,18 @@ EXPECT_FILES=(
   /usr/lib/systemd/system/sosharkos-flatpak-setup.service
   /etc/greetd/config.toml
   /etc/yum.repos.d/mise.repo
+  # androidbox (§16): helper + user session unit
+  /usr/bin/androidbox-start
+  /usr/bin/androidbox-stop
+  /usr/bin/androidbox-status
+  /usr/lib/systemd/user/waydroid-session.service
+)
+
+# ─── File che devono esistere ED essere eseguibili ──────────────────────────
+EXPECT_FILES_EXECUTABLE=(
+  /usr/bin/androidbox-start
+  /usr/bin/androidbox-stop
+  /usr/bin/androidbox-status
 )
 
 # ─── /etc/os-release deve contenere questa stringa ──────────────────

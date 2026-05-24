@@ -188,11 +188,30 @@ RUN dnf -y install \
 # compilato nel kernel). Coerente con il kernel host Arch CachyOS dell'utente.
 RUN dnf -y install waydroid lxc dnsmasq python3-gbinder python3-dbus python3-gobject && \
     dnf clean all
-# waydroid-container.service: avvio del container LXC di Android. Non fa nulla
-# finché l'utente non esegue `sudo waydroid init -s GAPPS` al primo uso (la init
-# scarica le immagini system/vendor in /var, scrivibile su bootc). Abilitarlo
-# qui è sicuro: parte solo quando l'immagine Android esiste.
-RUN systemctl enable waydroid-container.service
+# androidbox — UX Android a livello OS (NIENTE distrobox/repo separati).
+# waydroid-container.service (SYSTEM) resta INSTALLATO ma DISABILITATO di default
+# nell'immagine: zero consumo finché l'utente non opta-in. L'opt-in è PERSISTENTE
+# via systemd enable (torna a ogni boot/login finché non si fa `androidbox-stop`):
+#   androidbox-start  → init one-time (se serve) → enable --now del container
+#                       (system) + enable --now della sessione (user) + props
+#                       (multi_windows true, gralloc gbm per AMD).
+#   androidbox-stop   → stop sessione → disable --now session (user) + container.
+#   androidbox-status → waydroid status + is-enabled/is-active di entrambe le unit.
+# La sessione utente (waydroid-session.service) serve il display Wayland → parte
+# solo al login grafico (PartOf/WantedBy=graphical-session.target), abilitata
+# per-utente a runtime da androidbox-start, NON di default nell'immagine.
+COPY build_files/androidbox-start.sh   /usr/bin/androidbox-start
+COPY build_files/androidbox-stop.sh    /usr/bin/androidbox-stop
+COPY build_files/androidbox-status.sh  /usr/bin/androidbox-status
+COPY build_files/waydroid-session.service /usr/lib/systemd/user/waydroid-session.service
+RUN chmod +x /usr/bin/androidbox-start /usr/bin/androidbox-stop /usr/bin/androidbox-status
+# Il container Android ships DISABILITATO. GOTCHA: il pacchetto waydroid spedisce
+# un systemd PRESET (/usr/lib/systemd/system-preset/90-default.preset → "enable
+# waydroid-container.service") che lo abilita AUTOMATICAMENTE al %post (anche
+# senza un nostro `systemctl enable` — il commit a2d7057 era ridondante). Quindi
+# NON basta rimuovere l'enable: va DISABILITATO esplicitamente (rimuove il
+# symlink multi-user.target.wants) → l'opt-in resta runtime via androidbox-start.
+RUN systemctl disable waydroid-container.service
 
 # ═════ Layer 7 · Fonts (§14) ═════════════════════════════════════
 RUN dnf -y install \

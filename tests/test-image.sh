@@ -42,9 +42,21 @@ for u in "${EXPECT_UNITS_ENABLED[@]}"; do
     [ "$state" = "enabled" ] && ok "unit $u ($state)" || no "unit $u = '${state:-assente}'"
 done
 
+echo "── unit systemd NON enabled (opt-in a runtime) ──"
+for u in "${EXPECT_UNITS_NOT_ENABLED[@]}"; do
+    state="$(inimg "systemctl is-enabled '$u' 2>/dev/null")"
+    [ "$state" != "enabled" ] && ok "unit $u non enabled ('${state:-assente/disabled}')" \
+        || no "unit $u risulta 'enabled' (atteso DISABILITATO di default)"
+done
+
 echo "── file presenti ──"
 for f in "${EXPECT_FILES[@]}"; do
     inimg "test -e '$f'" && ok "file $f" || no "file $f mancante"
+done
+
+echo "── file eseguibili ──"
+for f in "${EXPECT_FILES_EXECUTABLE[@]}"; do
+    inimg "test -x '$f'" && ok "eseguibile $f" || no "file $f non eseguibile"
 done
 
 echo "── os-release ──"

@@ -258,12 +258,46 @@ Niente è ancora nel Containerfile finché non chiudiamo questo doc.
   - **Dati in `/var`**: `waydroid init` scarica le immagini system/vendor e
     scrive in `/var` (scrivibile su bootc) → **NON** si esegue a build-time
     (serve rete + scrittura). Solo il pacchetto è cotto nell'immagine.
-  - **Primo uso (runtime, l'utente)**:
-    1. `sudo waydroid init -s GAPPS` — scarica system/vendor con Google Apps
-       (GAPPS). Senza `-s GAPPS` parte con `VANILLA` (no Play Store).
-    2. `sudo systemctl start waydroid-container` (l'unit è già `enabled`
-       nell'immagine: parte solo dopo che l'init ha creato le immagini Android).
-    3. `waydroid session start` + `waydroid show-full-ui` (o avvia singole app).
+  - **androidbox — UX Android a livello OS (NIENTE distrobox/repo separati)**.
+    Tre helper in `/usr/bin/` (sorgenti in `build_files/androidbox-*.sh`) +
+    una **user unit** `waydroid-session.service` in `/usr/lib/systemd/user/`:
+    - **`waydroid-container.service` (SYSTEM) ships DISABILITATO di default**
+      nell'immagine: **zero consumo di risorse finché non opti-in** (cambiato
+      rispetto al commit `a2d7057` che lo `enabled`-va). Niente altro auto-avvia
+      Android al boot.
+    - **Opt-in PERSISTENTE** (torna a ogni boot/login finché non lo spegni),
+      ottenuto via `systemctl enable` (enable = persiste tra i reboot):
+      - **`androidbox-start`** = (init one-time se serve) →
+        `sudo systemctl enable --now waydroid-container` (system) →
+        attende il container → `systemctl --user enable --now
+        waydroid-session.service` (user) → `waydroid prop set
+        persist.waydroid.multi_windows true` (+ `persist.waydroid.gralloc gbm`,
+        hint AMD/mesa, difensivo). Stampa come lanciare le app e la nota di
+        certificazione Play Store. Il **primo** avvio esegue `sudo waydroid init
+        -s GAPPS` (download ~1GB system/vendor con Google Apps, serve rete).
+      - **`androidbox-stop`** = `waydroid session stop` (best-effort) →
+        `systemctl --user disable --now waydroid-session.service` →
+        `sudo systemctl disable --now waydroid-container`. Spento e **non torna
+        al boot**.
+      - **`androidbox-status`** = `waydroid status` + is-enabled/is-active di
+        entrambe le unit (container system + session user) + inizializzato sì/no.
+    - **User session service** (`waydroid-session.service`): la sessione ha
+      bisogno del display **Wayland** → può partire SOLO dopo il login grafico,
+      non al boot puro. È `PartOf`/`WantedBy=graphical-session.target`,
+      `Requisite=waydroid-container.service`, `ExecStart=/usr/bin/waydroid
+      session start`, `Restart=on-failure RestartSec=10` (non martella se il
+      container è giù). **NON** è enabled di default nell'immagine: lo abilita
+      per-utente `androidbox-start`.
+    - **Multi-window**: con `persist.waydroid.multi_windows true` ogni app
+      Android gira in una **finestra host dedicata** (no UI unica); le app
+      esportano launcher `.desktop` propri → avviabili dal **launcher del
+      desktop** senza comandi manuali una volta attivate.
+  - **Primo uso (runtime, l'utente)** — basta `androidbox-start` (fa tutto):
+    1. one-time `sudo waydroid init -s GAPPS` (download ~1GB con Google Apps;
+       senza `-s GAPPS` sarebbe `VANILLA`, no Play Store).
+    2. abilita+avvia container (system) e sessione (user), imposta multi-window.
+    3. lancia le app dal launcher o con `waydroid app launch <id>` /
+       `waydroid show-full-ui`.
   - **Play Store — certificazione (richiesta con GAPPS)**: il device va
     certificato o il Play Store dice "not certified". Recupera l'`android_id`
     (`sudo waydroid shell`→`ANDROID_RUNTIME_ROOT=/apex/com.android.runtime

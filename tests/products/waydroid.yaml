@@ -1,5 +1,5 @@
 product: waydroid
-summary: Waydroid — Android in un container LXC, app in finestre native (§16)
+summary: Waydroid + androidbox — Android in container LXC, app in finestre native, opt-in persistente (§16)
 category: emulation
 package: waydroid
 binary: waydroid
@@ -24,20 +24,38 @@ tests:
     level: headless
     context: image
     cmd: '! test -e /etc/modules-load.d/waydroid-binder.conf'
-  - name: waydroid-container.service enabled
+  - name: waydroid-container.service presente ma DISABILITATO di default
     level: headless
     context: image
-    cmd: '[ "$(systemctl is-enabled waydroid-container.service 2>/dev/null)" = enabled ]'
-  - name: waydroid init -s GAPPS (primo uso)
+    cmd: '[ "$(systemctl is-enabled waydroid-container.service 2>/dev/null)" != enabled ]'
+  - name: androidbox-start/stop/status presenti ed eseguibili (immagine)
+    level: headless
+    context: image
+    cmd: test -x /usr/bin/androidbox-start && test -x /usr/bin/androidbox-stop && test -x /usr/bin/androidbox-status
+  - name: waydroid-session.service (user unit) presente
+    level: headless
+    context: image
+    cmd: test -e /usr/lib/systemd/user/waydroid-session.service
+  - name: waydroid-session.service NON enabled di default (opt-in per-utente)
+    level: headless
+    context: image
+    cmd: '! ls /usr/lib/systemd/user/graphical-session.target.wants/waydroid-session.service 2>/dev/null && ! ls /etc/systemd/user/graphical-session.target.wants/waydroid-session.service 2>/dev/null'
+  - name: androidbox-start → waydroid init -s GAPPS (primo uso)
     level: display
     steps: |
-      Su VM grafica (🟡): `sudo waydroid init -s GAPPS` scarica system/vendor in
-      /var (rete). Poi `sudo systemctl start waydroid-container` e
-      `waydroid session start`; `waydroid show-full-ui` mostra Android su Niri.
-  - name: app Android in finestra propria + Play Store certificato
+      Su VM grafica (🟡): al primo `androidbox-start` parte `sudo waydroid init
+      -s GAPPS` (download ~1GB system/vendor con Google Apps in /var, serve rete),
+      poi abilita+avvia waydroid-container (system) e waydroid-session (user) e
+      imposta persist.waydroid.multi_windows=true. Da quel momento Android torna
+      a ogni boot/login finché non esegui `androidbox-stop`. `androidbox-status`
+      mostra waydroid status + is-enabled/is-active di entrambe le unit.
+  - name: app Android in finestra propria (multi-window) + Play Store certificato
     level: human
     steps: |
-      Su HW reale (🔴, serve GPU per il rendering accelerato): un'app Android
-      gira in una finestra Niri dedicata. Per Play Store: registra l'android_id
-      del device su https://www.google.com/android/uncertified/ (certificazione),
-      poi login account Google. Richiede account + GPU reale → solo umano.
+      Su HW reale (🔴, serve GPU per il rendering accelerato; questo host = AMD
+      Radeon): con persist.waydroid.multi_windows=true ogni app Android gira in
+      una finestra Niri DEDICATA, avviabile dal launcher (le app esportano
+      launcher .desktop propri) o con `waydroid app launch <id>`. Per Play Store:
+      registra l'android_id del device su
+      https://www.google.com/android/uncertified/ (certificazione), poi login
+      account Google. Richiede account + GPU reale → solo umano.

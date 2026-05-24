@@ -146,7 +146,7 @@ Pipeline e locale lanciano lo **stesso** script:
 ## Stato attuale
 - Remote: **github.com/osharko/SosharkoS** (push via chiave SSH / 1Password agent;
   clonabile da qualsiasi macchina, partire da questo CLAUDE.md).
-- Build VERDE **11G**, `bootc lint` ok. **Tier1 98/0**, **per-prodotto(image) 28/0**,
+- Build VERDE **11G**, `bootc lint` ok. **Tier1 108/0**, **per-prodotto(image) 31/0**,
   **smoke VM 14/0** (docker/distrobox/kubectl/mise/flathub + decoder h264/hevc/av1/aac),
   **render desktop in QEMU validato** (niri+Noctalia, grim 1280×800). qcow2/vmdk/vpc/
   ovf/gce + boot ok.
