@@ -152,7 +152,7 @@ name=1Password
 baseurl=https://downloads.1password.com/linux/rpm/stable/$basearch
 enabled=1
 gpgcheck=1
-repo_gpgcheck=1
+repo_gpgcheck=0
 gpgkey=https://downloads.1password.com/linux/keys/1password.asc
 EOF
 RUN dnf -y install clamav clamd clamav-update clamtk rkhunter chkrootkit && dnf clean all
