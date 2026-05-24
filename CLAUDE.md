@@ -128,6 +128,21 @@ Pipeline e locale lanciano lo **stesso** script:
   unit headless + checklist umana) eseguiti da `run-products.sh`. Aggiungere un
   prodotto = aggiungere un YAML. 3 livelli: 🟢 headless · 🟡 grafico-QEMU · 🔴 HW reale.
 
+### Gotcha CI (GHA hosted) — imparati a caro prezzo
+- **Nome immagine COMPLETO** `localhost/sosharkos:ci` (build+run): il nome corto
+  su GHA viene risolto su docker.io → "access denied".
+- **`--network=none`** sui `podman run` dei test: evita il setup rete rootless
+  (slirp/pasta) che altrimenti fa fallire ogni container.
+- **1Password**: repo via `printf` (NO heredoc — buildah legge `[1password]`
+  come istruzione se splittato), `repo_gpgcheck=0`, e **retry 5×** sull'install
+  (metadata di downloads.1password.com flaky) + `rpm -q` di verifica.
+- **`free-disk-space`** (jlumbroso) prima del build (immagine ~10G). NIENTE
+  storage su /mnt: la storage.conf minimale rompe l'overlay rootless.
+- **Cache trappola**: i build locali fanno cache-hit → un layer rotto resta
+  mascherato. Per validare come il CI: build FRESH (cambiare il layer/`--no-cache`)
+  o leggere i log GHA (`gh run view <id> --log-failed`). Lo step `Diagnostica`
+  (always) stampa `df`+`podman images`+sanity `podman run` per la causa reale.
+
 ## Stato attuale
 - Remote: **github.com/osharko/SosharkoS** (push via chiave SSH / 1Password agent;
   clonabile da qualsiasi macchina, partire da questo CLAUDE.md).
@@ -135,6 +150,10 @@ Pipeline e locale lanciano lo **stesso** script:
   **smoke VM 14/0** (docker/distrobox/kubectl/mise/flathub + decoder h264/hevc/av1/aac),
   **render desktop in QEMU validato** (niri+Noctalia, grim 1280×800). qcow2/vmdk/vpc/
   ovf/gce + boot ok.
+- **CI GitHub Actions VERDE** (build-test): build + Tier1 + per-prodotto + push
+  → immagine pubblicata su **ghcr.io/osharko/sosharkos** (latest + date + sha).
+  Job `e2e-kvm` (Tier2/3) skippato finché non registri un runner self-hosted KVM
+  + `vars.HAS_KVM_RUNNER=true`.
 Backlog: audio in QEMU (routing pipewire→hda), COPR per gpu-screen-recorder/
 wl-screenrec/gifski (plugin Noctalia screen-recorder), xpadneo/xone, WinBoat,
 `install-to-disk` test, registrare un runner self-hosted KVM per i Tier2/3 in CI.
