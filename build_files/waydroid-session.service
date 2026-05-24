@@ -15,6 +15,11 @@ After=graphical-session.target
 
 [Service]
 Type=simple
+# mise-immune: senza PATH esplicito, il compositor (niri) importa il PATH con
+# mise nel systemd --user → lo shebang `env python3` di waydroid becca il python
+# di mise (senza i binding `dbus`) e la sessione crasha in loop. Forziamo il
+# python di SISTEMA mettendo /usr/bin davanti.
+Environment=PATH=/usr/bin:/usr/local/bin:/bin
 # `waydroid session start` resta in foreground finché la sessione Android è viva.
 ExecStart=/usr/bin/waydroid session start
 ExecStop=/usr/bin/waydroid session stop

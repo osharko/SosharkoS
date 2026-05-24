@@ -14,6 +14,10 @@
 # (waydroid init scarica ~1GB di immagini Android in /var).
 set -euo pipefail
 
+# mise-immune: /usr/bin davanti, così lo shebang `env python3` di waydroid usa il
+# python di SISTEMA (con i binding dbus) e non quello eventuale di mise.
+export PATH="/usr/bin:$PATH"
+
 SYS_UNIT=waydroid-container.service
 USR_UNIT=waydroid-session.service
 SYSIMG=/var/lib/waydroid/images/system.img
