@@ -83,3 +83,51 @@ jobs:
           podman tag  "${REGISTRY}/${owner}/${IMAGE_NAME}:latest" "${IMAGE_NAME}:ci"
       - name: Tier2/3 in VM (entrypoint unico, vm-only)
         run: IMAGE="${IMAGE_NAME}:ci" bash tests/ci.sh --vm-only
+
+  # ISO installabile (Anaconda) generata DALL'immagine OCI con bootc-image-builder.
+  # NON serve KVM (è conversione immagine→ISO). On-demand (Run workflow) o su tag v*.
+  # Output: artifact scaricabile dal run; su tag v* anche allegata alla Release.
+  iso:
+    needs: build-test
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with: { tool-cache: true, large-packages: true, docker-images: true, swap-storage: true }
+      - name: Login + pull immagine OCI (anche se package privato)
+        run: |
+          owner="$(echo "${REGISTRY_USER}" | tr '[:upper:]' '[:lower:]')"
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login -u "${REGISTRY_USER}" --password-stdin "${REGISTRY}"
+          sudo podman pull "${REGISTRY}/${owner}/${IMAGE_NAME}:latest"
+      - name: Build ISO (bootc-image-builder)
+        run: |
+          owner="$(echo "${REGISTRY_USER}" | tr '[:upper:]' '[:lower:]')"
+          mkdir -p output
+          sudo podman run --rm --privileged --security-opt label=type:unconfined_t \
+            -v "$PWD/output":/output \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            quay.io/centos-bootc/bootc-image-builder:latest \
+            --type iso --rootfs btrfs --local "${REGISTRY}/${owner}/${IMAGE_NAME}:latest"
+          sudo chown -R "$USER:$USER" output && ls -lhR output
+      - name: Upload ISO (artifact scaricabile dal run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sosharkos-iso
+          path: output/bootiso/install.iso
+          retention-days: 14
+          compression-level: 0
+      - name: Allega ISO alla Release (solo su tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mv output/bootiso/install.iso "sosharkos-${GITHUB_REF_NAME}.iso"
+          gh release create "${GITHUB_REF_NAME}" "sosharkos-${GITHUB_REF_NAME}.iso" \
+            --title "SOsharkOS ${GITHUB_REF_NAME}" \
+            --notes "ISO installabile + immagine OCI: ghcr.io/${{ github.repository_owner }}/sosharkos:latest" \
+            || gh release upload "${GITHUB_REF_NAME}" "sosharkos-${GITHUB_REF_NAME}.iso" --clobber

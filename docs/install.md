@@ -1,8 +1,25 @@
 # Installare SOsharkOS
 
-Tre modi, dal più automatico al più manuale. Tutti installano l'immagine bootc
-(`ghcr.io/osharko/sosharkos:latest`) e poi si aggiorna atomicamente con
-`bootc upgrade` (rollback istantaneo).
+> **Modello bootc**: l'artefatto primario è l'**immagine OCI** su
+> `ghcr.io/osharko/sosharkos:latest` (come Silverblue). L'**ISO non è il
+> prodotto: si genera dall'immagine**. Puoi installare *senza* ISO
+> (`bootc install to-disk`, §1) o *con* ISO (§2/§3).
+
+## Dove scaricare l'ISO
+
+L'ISO è prodotta **dalla pipeline** (job `iso`, da immagine OCI con
+bootc-image-builder — non serve KVM):
+
+- **On-demand**: GitHub → *Actions* → workflow *"Build, test & push"* → **Run
+  workflow** → a fine run scarichi l'artifact **`sosharkos-iso`**.
+- **Release**: `git tag v0.1.0 && git push --tags` → l'ISO viene allegata alla
+  **GitHub Release** `v0.1.0` (download permanente). ⚠️ se l'ISO supera ~2 GB il
+  limite asset di Release può rifiutarla → usa l'artifact, o ospitala esterna
+  (VPS/Backblaze) per download permanenti grandi.
+- **In locale**: `just iso` → `output/bootiso/install.iso`.
+
+Tutti installano poi l'immagine bootc e si aggiornano con `bootc upgrade`
+(rollback istantaneo).
 
 ## 1. Da cmdline, fully scriptable — `bootc install to-disk` (§18)
 
