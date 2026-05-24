@@ -186,7 +186,9 @@ RUN dnf -y install \
 # entrambi BUILT-IN (=y) → NESSUN /etc/modules-load.d/*.conf necessario (non
 # esiste alcun modulo binder_linux.ko da caricare; il filesystem binderfs è già
 # compilato nel kernel). Coerente con il kernel host Arch CachyOS dell'utente.
-RUN dnf -y install waydroid lxc dnsmasq python3-gbinder python3-dbus python3-gobject && \
+# inotify-tools: usato da androidbox-watch per osservare le cartelle condivise e
+# triggerare l'auto-rescan MediaStore (vedi sotto).
+RUN dnf -y install waydroid lxc dnsmasq python3-gbinder python3-dbus python3-gobject inotify-tools && \
     dnf clean all
 # androidbox — UX Android a livello OS (NIENTE distrobox/repo separati).
 # waydroid-container.service (SYSTEM) resta INSTALLATO ma DISABILITATO di default
@@ -213,6 +215,20 @@ COPY build_files/androidbox-share.sh   /usr/bin/androidbox-share
 COPY build_files/waydroid-session.service /usr/lib/systemd/user/waydroid-session.service
 RUN chmod +x /usr/bin/androidbox-start /usr/bin/androidbox-stop /usr/bin/androidbox-status /usr/bin/androidbox-share && \
     ln -sf androidbox-share /usr/bin/androidbox-unshare
+# androidbox-watch — auto-rescan MediaStore: osserva (inotify) le cartelle
+# condivise e, a ogni modifica host-side, triggera un rescan via il root helper
+# androidbox-scan → i file aggiunti sull'host appaiono nella Galleria Android in
+# pochi secondi. È una USER unit abilitata per-utente da androidbox-start.
+#   androidbox-scan (root, /usr/libexec) → unico binario col NOPASSWD via la
+#     regola sudoers stretta (%wheel, SOLO questo helper, NON `waydroid shell`);
+#     valida l'unica subdir [A-Za-z0-9_] prima del `content call ... scan_file`.
+COPY build_files/androidbox-watch.sh        /usr/bin/androidbox-watch
+COPY build_files/androidbox-watch.service   /usr/lib/systemd/user/androidbox-watch.service
+COPY build_files/androidbox-scan.sh         /usr/libexec/androidbox-scan
+COPY build_files/androidbox-scan.sudoers    /etc/sudoers.d/androidbox-scan
+RUN chmod +x /usr/bin/androidbox-watch /usr/libexec/androidbox-scan && \
+    chmod 0440 /etc/sudoers.d/androidbox-scan && \
+    visudo -cf /etc/sudoers.d/androidbox-scan
 # Il container Android ships DISABILITATO. GOTCHA: il pacchetto waydroid spedisce
 # un systemd PRESET (/usr/lib/systemd/system-preset/90-default.preset → "enable
 # waydroid-container.service") che lo abilita AUTOMATICAMENTE al %post (anche

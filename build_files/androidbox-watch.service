@@ -1,0 +1,29 @@
+[Unit]
+Description=SOsharkOS — androidbox: auto-rescan MediaStore sulle cartelle condivise host↔Android
+Documentation=https://docs.waydro.id/
+# Osserva le cartelle condivise (~/.config/androidbox/shares) e triggera un
+# rescan MediaStore a ogni modifica → i file aggiunti host-side appaiono nella
+# Galleria Android entro pochi secondi. Ha senso solo con la sessione Android
+# attiva: legata alla sessione grafica come la session unit Waydroid.
+PartOf=graphical-session.target
+After=graphical-session.target waydroid-session.service
+# Tetto al riavvio: mai più di 5 tentativi in 120s (le chiavi StartLimit* vivono
+# in [Unit], non [Service], nei systemd moderni).
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+# mise-immune: forziamo il python/binari di SISTEMA (lo script chiama waydroid via
+# il root helper, ma il PATH pulito vale anche per inotifywait/sudo).
+Environment=PATH=/usr/bin:/usr/local/bin:/bin
+ExecStart=/usr/bin/androidbox-watch
+# Se inotifywait muore o la sessione Android cade, riprova con backoff blando.
+# (Lo script esce 0 se mancano dep/config → niente loop in quei casi.)
+Restart=on-failure
+RestartSec=5
+
+[Install]
+# NON abilitato di default nell'immagine: lo abilita per-utente androidbox-start
+# (systemctl --user enable --now). Quando abilitato, parte con la sessione grafica.
+WantedBy=graphical-session.target

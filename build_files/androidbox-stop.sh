@@ -19,7 +19,14 @@ say()  { printf '\033[1;36m▶\033[0m %s\n' "$*"; }
 ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m!\033[0m %s\n' "$*" >&2; }
 
-# ── 0. Smonta le cartelle condivise (bind-mount) PRIMA di fermare ───────────
+# ── 0a. Ferma l'auto-rescan (androidbox-watch) PRIMA di smontare i bind ──────
+# Lo si disabilita (non solo stop) così non torna al prossimo login. Va fermato
+# prima di smontare le cartelle, altrimenti osserverebbe path che spariscono.
+say "Disabilito e fermo l'auto-rescan (androidbox-watch)."
+systemctl --user disable --now androidbox-watch.service 2>/dev/null \
+    && ok "androidbox-watch disabilitato." || warn "androidbox-watch già disabilitato/assente."
+
+# ── 0b. Smonta le cartelle condivise (bind-mount) PRIMA di fermare ──────────
 # Best-effort + idempotente: senza config è un no-op. Vanno smontate prima di
 # fermare il container, altrimenti i bind restano appesi su <DATADIR>/media/0.
 # NB: smonta solo i bind; le cartelle host restano INTATTE.

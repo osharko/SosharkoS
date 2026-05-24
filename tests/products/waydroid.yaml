@@ -36,6 +36,34 @@ tests:
     level: headless
     context: image
     cmd: test -x /usr/bin/androidbox-share && test -L /usr/bin/androidbox-unshare && [ "$(readlink /usr/bin/androidbox-unshare)" = androidbox-share ]
+  - name: androidbox-watch + root helper presenti ed eseguibili (immagine)
+    level: headless
+    context: image
+    cmd: test -x /usr/bin/androidbox-watch && test -x /usr/libexec/androidbox-scan
+  - name: inotify-tools installato (androidbox-watch dipende da inotifywait)
+    level: headless
+    context: image
+    cmd: rpm -q inotify-tools && command -v inotifywait
+  - name: sudoers androidbox-scan presente, 0440, visudo-valido e STRETTO
+    level: headless
+    context: image
+    cmd: >-
+      test -f /etc/sudoers.d/androidbox-scan
+      && [ "$(stat -c%a /etc/sudoers.d/androidbox-scan)" = 440 ]
+      && visudo -cf /etc/sudoers.d/androidbox-scan
+      && grep -q '^%wheel ALL=(root) NOPASSWD: /usr/libexec/androidbox-scan$' /etc/sudoers.d/androidbox-scan
+  - name: androidbox-scan rifiuta subdir non valide (NOPASSWD-safe)
+    level: headless
+    context: image
+    cmd: '! /usr/libexec/androidbox-scan ../etc 2>/dev/null && ! /usr/libexec/androidbox-scan "" 2>/dev/null'
+  - name: androidbox-watch.service (user unit) presente
+    level: headless
+    context: image
+    cmd: test -e /usr/lib/systemd/user/androidbox-watch.service
+  - name: androidbox-watch.service NON enabled di default (opt-in per-utente)
+    level: headless
+    context: image
+    cmd: '! ls /usr/lib/systemd/user/graphical-session.target.wants/androidbox-watch.service 2>/dev/null && ! ls /etc/systemd/user/graphical-session.target.wants/androidbox-watch.service 2>/dev/null'
   - name: waydroid-session.service (user unit) presente
     level: headless
     context: image
@@ -85,3 +113,24 @@ tests:
       I bind si ri-applicano a ogni `androidbox-start` e si smontano in
       `androidbox-stop`. VERIFICATO su host CachyOS (user-mode): Android vede i
       file host, rescan no-restart funziona, unshare pulito.
+  - name: auto-rescan MediaStore (androidbox-watch) — file host → Galleria senza comandi
+    level: display
+    steps: |
+      Su VM/HW con Android avviato e cartelle condivise attive (🟡): `androidbox-start`
+      abilita la USER unit `androidbox-watch.service` (`systemctl --user is-active
+      androidbox-watch` = active). Il demone fa un singolo `inotifywait -m -r` su
+      tutte le HOSTDIR della config e, a ogni modifica, mappa l'evento alla SUBDIR
+      Android e chiama `sudo /usr/libexec/androidbox-scan <SUBDIR>` (debounce ~1
+      scan/2s per subdir). Verifica:
+        - conteggio MediaStore prima:
+          `sudo waydroid shell -- sh -c 'content query --uri
+          content://media/external/images/media --projection _id | wc -l'`;
+        - aggiungi UN file immagine in una cartella host condivisa (es. ~/Immagini)
+          SENZA alcun comando manuale;
+        - entro pochi secondi il conteggio sale di 1 e il file compare in Galleria;
+        - eliminando il file host, un nuovo scan lo rimuove dal conteggio.
+      Il root helper valida la subdir ([A-Za-z0-9_]) e la regola sudoers concede il
+      NOPASSWD SOLO su /usr/libexec/androidbox-scan (NON su `waydroid shell`).
+      `androidbox-stop` disabilita la watch prima di smontare i bind.
+      VERIFICATO su host CachyOS (user-mode): drop in ~/Immagini → MediaStore
+      31→32 in automatico via la watch; delete → rescan riporta il conteggio giù.

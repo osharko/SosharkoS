@@ -112,6 +112,17 @@ else
     warn "androidbox-share non trovato: salto le cartelle condivise."
 fi
 
+# ── 5b. Auto-rescan MediaStore (androidbox-watch) ───────────────────────────
+# Osserva le cartelle condivise e triggera un rescan MediaStore a ogni modifica:
+# un file aggiunto host-side appare nella Galleria Android entro pochi secondi,
+# senza comandi manuali. È una USER unit abilitata per-utente (persiste al login),
+# disabilitata da androidbox-stop. Best-effort: se la sessione grafica non c'è,
+# riprova al prossimo login.
+say "Abilito e avvio l'auto-rescan delle cartelle condivise (androidbox-watch)."
+systemctl --user enable --now androidbox-watch.service \
+    && ok "androidbox-watch attivo (i file host appaiono nella Galleria automaticamente)." \
+    || warn "androidbox-watch non avviato (sessione grafica assente? riprova dopo il login)."
+
 # ── 6. Launcher Android visibili nel menu host ──────────────────────────────
 # Waydroid rigenera i .desktop con NoDisplay=true a OGNI avvio sessione → le app
 # sparirebbero dal launcher. Diamo a Waydroid qualche secondo per rigenerarli,

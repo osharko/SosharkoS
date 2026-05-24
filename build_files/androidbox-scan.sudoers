@@ -1,0 +1,16 @@
+# androidbox-scan — regola sudoers STRETTA per il rescan MediaStore senza password.
+#
+# Concede al gruppo admin (%wheel: il gruppo amministrativo su Fedora E su Arch)
+# di eseguire SOLO il root helper /usr/libexec/androidbox-scan senza password.
+# Serve a androidbox-watch (gira come utente) per triggerare il rescan al volo
+# quando un file appare nelle cartelle condivise host↔Android.
+#
+# SICUREZZA — perché è stretta e perché il helper basta a renderla sicura:
+#   - NON concediamo NOPASSWD su `waydroid` né su `waydroid shell` in generale
+#     (sarebbe una shell root nel container = privilege escalation totale).
+#   - Concediamo SOLO il binario dedicato, che accetta UN argomento e lo valida
+#     in modo rigido ([A-Za-z0-9_]) prima di costruire il comando `content call`.
+#     Niente path arbitrari, niente flag iniettabili.
+#
+# Installata mode 0440 (root:root), validare con `visudo -cf`.
+%wheel ALL=(root) NOPASSWD: /usr/libexec/androidbox-scan

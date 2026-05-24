@@ -19,6 +19,8 @@ EXPECT_BINS=(
   androidbox-start androidbox-stop androidbox-status
   # androidbox: condivisione cartelle host↔Android (§16); unshare = symlink
   androidbox-share androidbox-unshare
+  # androidbox: auto-rescan MediaStore (§16) — watch + inotify
+  androidbox-watch inotifywait
   # launchpad (§4)
   podman docker buildah skopeo distrobox
   kubectl virt-manager quickemu quickget mise flatpak
@@ -58,6 +60,8 @@ EXPECT_RPMS=(
   libavcodec-freeworld
   # emulazione (§16) — Waydroid (Android in container, base Fedora 44)
   waydroid lxc python3-gbinder
+  # androidbox auto-rescan (§16): inotify-tools per androidbox-watch
+  inotify-tools
   # editor
   codium
 )
@@ -93,6 +97,11 @@ EXPECT_FILES=(
   /usr/bin/androidbox-share
   /usr/bin/androidbox-unshare
   /usr/lib/systemd/user/waydroid-session.service
+  # androidbox auto-rescan (§16): watch bin + user unit + root helper + sudoers
+  /usr/bin/androidbox-watch
+  /usr/lib/systemd/user/androidbox-watch.service
+  /usr/libexec/androidbox-scan
+  /etc/sudoers.d/androidbox-scan
 )
 
 # ─── File che devono esistere ED essere eseguibili ──────────────────────────
@@ -102,6 +111,9 @@ EXPECT_FILES_EXECUTABLE=(
   /usr/bin/androidbox-status
   /usr/bin/androidbox-share
   /usr/bin/androidbox-unshare
+  # androidbox auto-rescan (§16): watch bin + root helper
+  /usr/bin/androidbox-watch
+  /usr/libexec/androidbox-scan
 )
 
 # ─── /etc/os-release deve contenere questa stringa ──────────────────

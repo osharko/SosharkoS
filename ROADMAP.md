@@ -84,7 +84,10 @@ Renderla davvero condivisibile.
       Store a runtime. **Cartelle condivise host↔Android** (`androidbox-share`/
       `androidbox-unshare`): bind-mount config-driven legati al lifecycle (default
       dagli XDG dir → Pictures/Download/Music/Documents/Movies), rescan MediaStore
-      no-restart, DATADIR user/system rilevata dinamicamente (§16).
+      no-restart, DATADIR user/system rilevata dinamicamente. **Auto-rescan
+      continuo** (`androidbox-watch`): inotify sulle cartelle condivise → i file
+      aggiunti host-side appaiono in Galleria in pochi secondi senza comandi,
+      via root helper con regola sudoers stretta (§16). (§16)
 - [x] **BoxBuddy** (GUI distrobox manager) — flatpak al 1° boot (§4).
 - [ ] **Doppia ISO**: secondo desktop oltre a Niri/Noctalia (es. GNOME) —
       stesso base+kernel+launchpad, DE diverso

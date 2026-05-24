@@ -13,6 +13,7 @@ export PATH="/usr/bin:$PATH"
 
 SYS_UNIT=waydroid-container.service
 USR_UNIT=waydroid-session.service
+WATCH_UNIT=androidbox-watch.service
 SYSIMG=/var/lib/waydroid/images/system.img
 
 hdr() { printf '\n\033[1m%s\033[0m\n' "$*"; }
@@ -28,6 +29,7 @@ fi
 hdr "Unit systemd"
 kv "container (sys):" "enabled=$(systemctl is-enabled "$SYS_UNIT" 2>/dev/null || echo n/a)  active=$(systemctl is-active "$SYS_UNIT" 2>/dev/null || echo n/a)"
 kv "session (user):"  "enabled=$(systemctl --user is-enabled "$USR_UNIT" 2>/dev/null || echo n/a)  active=$(systemctl --user is-active "$USR_UNIT" 2>/dev/null || echo n/a)"
+kv "watch (user):"    "enabled=$(systemctl --user is-enabled "$WATCH_UNIT" 2>/dev/null || echo n/a)  active=$(systemctl --user is-active "$WATCH_UNIT" 2>/dev/null || echo n/a)"
 
 hdr "Inizializzazione"
 if [ -f "$SYSIMG" ]; then

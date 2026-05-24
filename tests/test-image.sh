@@ -59,6 +59,15 @@ for f in "${EXPECT_FILES_EXECUTABLE[@]}"; do
     inimg "test -x '$f'" && ok "eseguibile $f" || no "file $f non eseguibile"
 done
 
+echo "── sudoers androidbox-scan (mode 0440 + visudo-valido + regola stretta) ──"
+inimg "[ \"\$(stat -c%a /etc/sudoers.d/androidbox-scan)\" = 440 ]" \
+    && ok "sudoers androidbox-scan mode 0440" || no "sudoers androidbox-scan non 0440"
+inimg "visudo -cf /etc/sudoers.d/androidbox-scan >/dev/null 2>&1" \
+    && ok "sudoers androidbox-scan visudo-valido" || no "sudoers androidbox-scan non valido"
+inimg "grep -q '^%wheel ALL=(root) NOPASSWD: /usr/libexec/androidbox-scan\$' /etc/sudoers.d/androidbox-scan" \
+    && ok "sudoers regola stretta (solo androidbox-scan, NOPASSWD %wheel)" \
+    || no "sudoers regola androidbox-scan assente/larga"
+
 echo "── os-release ──"
 inimg "grep -q '$EXPECT_OSRELEASE_GREP' /etc/os-release" \
     && ok "os-release contiene $EXPECT_OSRELEASE_GREP" \

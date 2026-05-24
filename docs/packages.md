@@ -339,6 +339,37 @@ Niente è ancora nel Containerfile finché non chiudiamo questo doc.
         (re)indicizza **subito**, senza riavviare Android. Conteggio immagini:
         `sudo waydroid shell -- sh -c 'content query --uri
         content://media/external/images/media --projection _id | wc -l'`.
+      - **Auto-rescan continuo (`androidbox-watch`)** (VERIFICATO su host CachyOS
+        user-mode): lo scan al bind è una-tantum; per far apparire in Galleria i
+        file aggiunti host-side **dopo** lo start senza comandi manuali, un demone
+        osserva le cartelle condivise e ri-scansiona ad ogni modifica.
+        - **`androidbox-watch`** (USER unit `androidbox-watch.service`,
+          `PartOf`/`WantedBy=graphical-session.target`, `Restart=on-failure`):
+          legge `~/.config/androidbox/shares`, fa **un solo** `inotifywait -m -r
+          -e close_write,create,moved_to,move,delete` su tutte le HOSTDIR
+          esistenti, rimappa ogni evento alla sua SUBDIR Android e **debounce**
+          (coalescenza: ≤1 scan ogni 2s per subdir) → chiama il root helper. Le
+          **delete** sono incluse (la rimozione di un file aggiorna la Galleria).
+          Dipende da **`inotify-tools`** (nell'immagine). Esce 0 senza
+          dep/config (niente Restart-loop). **NON** enabled di default: lo
+          abilita per-utente `androidbox-start` (`systemctl --user enable --now`),
+          lo disabilita `androidbox-stop` PRIMA di smontare i bind.
+          `androidbox-status` mostra enabled/active anche di questa unit.
+        - **Root helper `/usr/libexec/androidbox-scan <SUBDIR>`**: `waydroid
+          shell` rifiuta non-root e il `content call ... scan_file` serve root →
+          il watch (utente) invoca questo helper via `sudo`. Il helper **valida
+          rigidamente** l'unico argomento (`[A-Za-z0-9_]`, altro → exit ≠0) prima
+          di costruire `/storage/emulated/0/<SUBDIR>`: niente path/flag iniettabili.
+        - **Regola sudoers STRETTA** (`/etc/sudoers.d/androidbox-scan`, mode
+          **0440**, validata con `visudo -cf`): `%wheel ALL=(root) NOPASSWD:
+          /usr/libexec/androidbox-scan`. `%wheel` = gruppo admin su **Fedora E
+          Arch**. Concede il NOPASSWD **SOLO** su quel binario — **NON** su
+          `waydroid` né `waydroid shell` (sarebbe shell root nel container =
+          escalation totale): la sicurezza poggia sul helper + validazione arg.
+        - **VERIFICATO live** (host CachyOS user-mode, Android attivo): drop di un
+          file in `~/Immagini` → la watch triggera lo scan in pochi secondi →
+          conteggio MediaStore **31→32** in automatico; delete del file → un nuovo
+          scan riporta il conteggio giù. Nessun comando manuale, nessun restart.
       - **Permessi**: il backing `media/0` è `media_rw` (uid 1023) con ACL;
         Android presenta `/sdcard` via lo storage layer a prescindere dall'owner
         sottostante, quindi un **bind semplice funziona** (Android vede i file
