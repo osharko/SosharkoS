@@ -35,4 +35,12 @@ if [ -f "$SYSIMG" ]; then
 else
     kv "initialized:" "no — il primo 'androidbox-start' eseguirà 'waydroid init -s GAPPS'"
 fi
+
+hdr "Cartelle condivise (host↔Android)"
+if command -v androidbox-share >/dev/null; then
+    androidbox-share --list 2>/dev/null | sed '1,2d' | sed 's/^/  /' \
+        || echo "  (impossibile elencare le condivisioni)"
+else
+    echo "  androidbox-share non disponibile"
+fi
 echo

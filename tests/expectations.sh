@@ -17,6 +17,8 @@ EXPECT_BINS=(
   gamescope waydroid
   # androidbox: helper UX Android a livello OS (§16)
   androidbox-start androidbox-stop androidbox-status
+  # androidbox: condivisione cartelle host↔Android (§16); unshare = symlink
+  androidbox-share androidbox-unshare
   # launchpad (§4)
   podman docker buildah skopeo distrobox
   kubectl virt-manager quickemu quickget mise flatpak
@@ -88,6 +90,8 @@ EXPECT_FILES=(
   /usr/bin/androidbox-start
   /usr/bin/androidbox-stop
   /usr/bin/androidbox-status
+  /usr/bin/androidbox-share
+  /usr/bin/androidbox-unshare
   /usr/lib/systemd/user/waydroid-session.service
 )
 
@@ -96,6 +100,8 @@ EXPECT_FILES_EXECUTABLE=(
   /usr/bin/androidbox-start
   /usr/bin/androidbox-stop
   /usr/bin/androidbox-status
+  /usr/bin/androidbox-share
+  /usr/bin/androidbox-unshare
 )
 
 # ─── /etc/os-release deve contenere questa stringa ──────────────────

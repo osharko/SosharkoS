@@ -81,6 +81,19 @@ fi
 waydroid prop set persist.waydroid.gralloc gbm 2>/dev/null \
     && ok "persist.waydroid.gralloc = gbm (hint AMD/mesa)." || true
 
+# ── 5. Cartelle condivise host↔Android (bind-mount, §16) ────────────────────
+# Best-effort + idempotente: se non c'è una config, no-op. I bind sono legati al
+# lifecycle (li ri-applichiamo a OGNI start, li smonta androidbox-stop) → niente
+# .mount unit fragili né modifiche alla config LXC (che si resetta agli upgrade).
+say "Ri-applico le cartelle condivise (se configurate)…"
+if command -v androidbox-share >/dev/null; then
+    androidbox-share --apply-all 2>/dev/null \
+        && ok "Cartelle condivise applicate (vedi: androidbox-share --list)." \
+        || warn "Nessuna condivisione applicata (config vuota? Android non pronto?)."
+else
+    warn "androidbox-share non trovato: salto le cartelle condivise."
+fi
+
 cat <<'EOF'
 
 ──────────────────────────────────────────────────────────────────────────
@@ -99,6 +112,12 @@ Play Store (GAPPS) — CERTIFICAZIONE richiesta la prima volta, altrimenti dice
     sqlite3 /data/data/com.google.android.gsf/databases/gservices.db \
     "select * from main where name = \"android_id\";"'
   → registra il valore su  https://www.google.com/android/uncertified/  poi riavvia.
+
+Condividere cartelle host con Android (Galleria vede ~/Immagini, ecc.):
+  androidbox-share                # default dai tuoi XDG dir (Pictures/Download/…)
+  androidbox-share ~/dir [Subdir] # condividi una cartella specifica
+  androidbox-share --list         # mostra le condivisioni + stato
+  androidbox-unshare --all        # rimuove tutto (cartelle host intatte)
 
 Spegnere (e non farlo tornare al boot):  androidbox-stop
 Stato:                                   androidbox-status

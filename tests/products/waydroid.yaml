@@ -1,5 +1,5 @@
 product: waydroid
-summary: Waydroid + androidbox — Android in container LXC, app in finestre native, opt-in persistente (§16)
+summary: Waydroid + androidbox — Android in container LXC, app in finestre native, opt-in persistente + cartelle condivise host↔Android (§16)
 category: emulation
 package: waydroid
 binary: waydroid
@@ -32,6 +32,10 @@ tests:
     level: headless
     context: image
     cmd: test -x /usr/bin/androidbox-start && test -x /usr/bin/androidbox-stop && test -x /usr/bin/androidbox-status
+  - name: androidbox-share presente ed eseguibile + unshare symlink (immagine)
+    level: headless
+    context: image
+    cmd: test -x /usr/bin/androidbox-share && test -L /usr/bin/androidbox-unshare && [ "$(readlink /usr/bin/androidbox-unshare)" = androidbox-share ]
   - name: waydroid-session.service (user unit) presente
     level: headless
     context: image
@@ -59,3 +63,25 @@ tests:
       registra l'android_id del device su
       https://www.google.com/android/uncertified/ (certificazione), poi login
       account Google. Richiede account + GPU reale → solo umano.
+  - name: condivisione cartelle host↔Android (androidbox-share)
+    level: display
+    steps: |
+      Su VM/HW con Android avviato (🟡, serve waydroid init + sessione): esegui
+      `androidbox-share` (senza argomenti) → popola ~/.config/androidbox/shares
+      coi default dai tuoi XDG dir (Pictures/Download/Music/Documents/Movies, solo
+      quelli esistenti) e bind-monta ogni cartella host su <DATADIR>/media/0/<sub>
+      (DATADIR rilevato dinamicamente: ~/.local/share/waydroid/data in user-mode,
+      /var/lib/waydroid/data in system-mode). Verifica:
+        - `mount | grep waydroid/data/media/0` mostra i bind attivi;
+        - `sudo waydroid shell -- ls /storage/emulated/0/Pictures` elenca i file
+          della tua cartella host (Android li VEDE);
+        - dopo aver aggiunto un file host-side, il rescan SENZA riavvio
+          (`content call --uri content://media --method scan_file --arg …`,
+          eseguito in automatico) fa salire il conteggio MediaStore
+          (`content query --uri content://media/external/images/media
+          --projection _id | wc -l`).
+      `androidbox-share --list` mostra mapping + stato; `androidbox-unshare --all`
+      smonta tutto lasciando le cartelle host INTATTE (verifica `mount` pulito).
+      I bind si ri-applicano a ogni `androidbox-start` e si smontano in
+      `androidbox-stop`. VERIFICATO su host CachyOS (user-mode): Android vede i
+      file host, rescan no-restart funziona, unshare pulito.

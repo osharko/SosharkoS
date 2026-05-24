@@ -195,16 +195,24 @@ RUN dnf -y install waydroid lxc dnsmasq python3-gbinder python3-dbus python3-gob
 #   androidbox-start  → init one-time (se serve) → enable --now del container
 #                       (system) + enable --now della sessione (user) + props
 #                       (multi_windows true, gralloc gbm per AMD).
-#   androidbox-stop   → stop sessione → disable --now session (user) + container.
-#   androidbox-status → waydroid status + is-enabled/is-active di entrambe le unit.
+#   androidbox-stop   → smonta le cartelle condivise → stop sessione →
+#                       disable --now session (user) + container.
+#   androidbox-status → waydroid status + is-enabled/is-active + cartelle condivise.
 # La sessione utente (waydroid-session.service) serve il display Wayland → parte
 # solo al login grafico (PartOf/WantedBy=graphical-session.target), abilitata
 # per-utente a runtime da androidbox-start, NON di default nell'immagine.
+#   androidbox-share/unshare → condividi cartelle host↔Android via bind-mount
+#                       (config ~/.config/androidbox/shares, applicata da
+#                       androidbox-start, smontata da androidbox-stop). UN solo
+#                       script: `androidbox-unshare` è un symlink → il comporta-
+#                       mento dipende dal nome con cui è invocato (basename).
 COPY build_files/androidbox-start.sh   /usr/bin/androidbox-start
 COPY build_files/androidbox-stop.sh    /usr/bin/androidbox-stop
 COPY build_files/androidbox-status.sh  /usr/bin/androidbox-status
+COPY build_files/androidbox-share.sh   /usr/bin/androidbox-share
 COPY build_files/waydroid-session.service /usr/lib/systemd/user/waydroid-session.service
-RUN chmod +x /usr/bin/androidbox-start /usr/bin/androidbox-stop /usr/bin/androidbox-status
+RUN chmod +x /usr/bin/androidbox-start /usr/bin/androidbox-stop /usr/bin/androidbox-status /usr/bin/androidbox-share && \
+    ln -sf androidbox-share /usr/bin/androidbox-unshare
 # Il container Android ships DISABILITATO. GOTCHA: il pacchetto waydroid spedisce
 # un systemd PRESET (/usr/lib/systemd/system-preset/90-default.preset → "enable
 # waydroid-container.service") che lo abilita AUTOMATICAMENTE al %post (anche

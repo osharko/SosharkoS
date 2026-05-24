@@ -81,7 +81,10 @@ Renderla davvero condivisibile.
       container service DISABILITATO di default (opt-in persistente via systemd
       enable), user session unit per il login grafico, multi-window. Primo
       `androidbox-start` esegue `waydroid init -s GAPPS`; certificazione Play
-      Store a runtime (§16).
+      Store a runtime. **Cartelle condivise host↔Android** (`androidbox-share`/
+      `androidbox-unshare`): bind-mount config-driven legati al lifecycle (default
+      dagli XDG dir → Pictures/Download/Music/Documents/Movies), rescan MediaStore
+      no-restart, DATADIR user/system rilevata dinamicamente (§16).
 - [x] **BoxBuddy** (GUI distrobox manager) — flatpak al 1° boot (§4).
 - [ ] **Doppia ISO**: secondo desktop oltre a Niri/Noctalia (es. GNOME) —
       stesso base+kernel+launchpad, DE diverso

@@ -292,6 +292,63 @@ Niente è ancora nel Containerfile finché non chiudiamo questo doc.
       Android gira in una **finestra host dedicata** (no UI unica); le app
       esportano launcher `.desktop` propri → avviabili dal **launcher del
       desktop** senza comandi manuali una volta attivate.
+    - **Cartelle condivise host↔Android (`androidbox-share`/`androidbox-unshare`)**:
+      gli **STESSI** file appaiono sull'host e dentro Android (la Galleria vede
+      `~/Immagini`, i Download condivisi, ecc.) via **bind-mount** legato al
+      lifecycle. Design **reversibile e a prova di upgrade**: NON tocca la config
+      LXC (che si resetta agli upgrade di waydroid) né usa `.mount` unit fragili
+      per-path. Una sola sorgente in `build_files/androidbox-share.sh`;
+      `androidbox-unshare` è un **symlink** → il comportamento dipende dal
+      basename con cui è invocato.
+      - **Config**: `~/.config/androidbox/shares`, righe `HOSTDIR|SUBDIR` (es.
+        `/home/u/Immagini|Pictures`).
+      - **Comandi**:
+        - `androidbox-share` (no args) → popola la config coi **DEFAULT** letti
+          dai tuoi XDG dir (`~/.config/user-dirs.dirs`): `XDG_PICTURES_DIR`→
+          `Pictures`, `XDG_DOWNLOAD_DIR`→`Download`, `XDG_MUSIC_DIR`→`Music`,
+          `XDG_DOCUMENTS_DIR`→`Documents`, `XDG_VIDEOS_DIR`→`Movies` (**solo** le
+          dir che esistono), poi li applica subito se Android è attivo. NB: gli
+          XDG dir possono essere **localizzati** (su questo host IT:
+          `~/Immagini`, `~/Scaricati`, `~/Musica`, `~/Documenti`, `~/Video`) — il
+          mapping verso le subdir Android standard è comunque corretto.
+        - `androidbox-share <hostdir> [subdir]` → aggiunge un mapping (subdir
+          default = basename) + applica subito.
+        - `androidbox-share --list` → mostra i mapping + stato mount.
+        - `androidbox-unshare <hostdir>` / `--all` → rimuove mapping + smonta
+          (cartelle host **INTATTE**).
+      - **Dove avviene il bind**: su `<DATADIR>/media/0/<SUBDIR>` (l'`/sdcard` di
+        Android, cioè `/storage/emulated/0/<SUBDIR>`). La **DATADIR è
+        mode-dependent** e va rilevata dinamicamente:
+        **user-mode** = `~/.local/share/waydroid/data` (questo host CachyOS),
+        **system-mode** = `/var/lib/waydroid/data` (probabile nell'immagine). Si
+        usa quella il cui `.../media/0` esiste. Il bind richiede **root**
+        (`sudo mount --bind`); l'unmount è robusto con fallback lazy (`umount -l`).
+        Il passthrough verso `/storage/emulated/0` è una **FUSE/MediaProvider**
+        nel container (`/dev/fuse … /storage/emulated`): un bind sul backing
+        `media/0/<SUBDIR>` è **visto in tempo reale** da Android (VERIFICATO).
+      - **Lifecycle**: `androidbox-start`, dopo che il container è su, ri-applica
+        TUTTI i bind dalla config (`androidbox-share --apply-all`); `androidbox-stop`
+        li smonta tutti PRIMA di fermare (`--teardown-all`). Best-effort +
+        idempotente: config assente = no-op. I bind si ricostruiscono a **ogni**
+        start → sopravvivono ai reboot senza stato persistente fragile.
+      - **Rescan MediaStore SENZA riavvio** (VERIFICATO): i file scritti
+        host-side **bypassano l'inotify** di Android → serve uno scan esplicito.
+        Dopo ogni bind (e si può rilanciare a mano) `androidbox-share` esegue
+        `sudo waydroid shell -- content call --uri content://media --method
+        scan_file --arg /storage/emulated/0/<SUBDIR>` → l'MediaProvider
+        (re)indicizza **subito**, senza riavviare Android. Conteggio immagini:
+        `sudo waydroid shell -- sh -c 'content query --uri
+        content://media/external/images/media --projection _id | wc -l'`.
+      - **Permessi**: il backing `media/0` è `media_rw` (uid 1023) con ACL;
+        Android presenta `/sdcard` via lo storage layer a prescindere dall'owner
+        sottostante, quindi un **bind semplice funziona** (Android vede i file
+        host con uid `system`/`media_rw` riproiettato). Il target viene creato
+        con `chown 1023:1023` se mancante. **VERIFICATO** su host CachyOS
+        user-mode: Android elenca i file della cartella host, il rescan no-restart
+        aggiorna il conteggio MediaStore, `androidbox-unshare --all` smonta pulito
+        e i file originali del backing riappaiono (il bind **overlaya**, non
+        distrugge). Caveat: il bind **nasconde** il contenuto interno preesistente
+        della subdir Android finché è attivo (ricompare allo smontaggio).
   - **Primo uso (runtime, l'utente)** — basta `androidbox-start` (fa tutto):
     1. one-time `sudo waydroid init -s GAPPS` (download ~1GB con Google Apps;
        senza `-s GAPPS` sarebbe `VANILLA`, no Play Store).
