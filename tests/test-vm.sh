@@ -94,10 +94,17 @@ fi
 ssh "${SSH_OPTS[@]}" tester@localhost "echo sosharkos | sudo -S bash -c 'echo \"tester ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/99-test'" 2>/dev/null || true
 ssh "${SSH_OPTS[@]}" tester@localhost 'sudo -n true 2>/dev/null && echo "  sudo passwordless: OK" || echo "  sudo passwordless: NO"'
 
-# ─── esegue lo smoke dentro la VM ───────────────────────────────────
+# ─── suite dentro la VM: smoke + per-prodotto(vm) + integrazione ────
 echo "▶ smoke funzionale dentro la VM:"
-ssh "${SSH_OPTS[@]}" tester@localhost 'bash -s' < "$HERE/smoke.sh"
-rc=$?
+ssh "${SSH_OPTS[@]}" tester@localhost 'bash -s' < "$HERE/smoke.sh"; rc=$?
+
+echo "▶ per-prodotto (contesto vm):"
+bash "$HERE/run-products.sh" --context vm \
+    --ssh "ssh -i $SSH_KEY -p $SSH_PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null tester@localhost" \
+    || rc=1
+
+echo "▶ integrazione (k3d/k9s/distrobox/mise/clamav):"
+ssh "${SSH_OPTS[@]}" tester@localhost 'bash -s' < "$HERE/integration.sh" || rc=1
 
 ssh "${SSH_OPTS[@]}" tester@localhost 'sudo poweroff' 2>/dev/null || true
 exit $rc

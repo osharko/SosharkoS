@@ -122,15 +122,20 @@ test-vm:
 test-vm-gui:
     bash tests/test-vm-gui.sh {{IMAGE_NAME}}:{{IMAGE_TAG}}
 
-# Mirror LOCALE del job CI (.github/workflows/build.yml): build + Tier1 +
-# per-prodotto. Se questo passa, la pipeline GHA dovrebbe passare.
-ci: build test test-products
+# ─── Test: UN SOLO entrypoint (tests/ci.sh) — identico in locale e in CI ──
+# Niente divergenza: la pipeline GHA lancia esattamente questo stesso script.
+ci:                        # tutto (con /dev/kvm: anche Tier2/3 boot/e2e/render)
+    bash tests/ci.sh
+ci-host:                   # solo ciò che gira sul runner hosted (no KVM)
+    bash tests/ci.sh --no-vm
+ci-vm:                     # solo Tier2/3 (serve KVM + immagine pronta)
+    bash tests/ci.sh --vm-only
 
-# Lint della workflow GHA (actionlint se presente)
+# Esegue LA workflow GitHub Actions in locale, in Docker, via act (= "la
+# pipeline" sul tuo PC). Pesante (build 10G in container). Richiede docker.
+ci-act:
+    act -j build-test --container-architecture linux/amd64
+
 lint-ci:
     @command -v actionlint >/dev/null && actionlint .github/workflows/*.yml \
       || echo "actionlint non installato (go install github.com/rhysd/actionlint/cmd/actionlint@latest)"
-
-# Validazione COMPLETA locale: pipeline + run + e2e + integrazione (richiede KVM)
-validate: lint-ci ci test-vm test-vm-gui
-    @echo "→ integrazione (k3d/k9s) gira dentro test-vm; per il set completo: just test-vm"

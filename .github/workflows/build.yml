@@ -3,7 +3,7 @@ name: Build, test & push
 on:
   push:
     branches: [main]
-    paths-ignore: ["README.md", "ROADMAP.md", "docs/**", ".vscode/**", "tests/**"]
+    paths-ignore: ["README.md", "ROADMAP.md", "docs/**", ".vscode/**"]
   pull_request:
     branches: [main]
   schedule:
@@ -15,46 +15,33 @@ env:
   REGISTRY: ghcr.io
   REGISTRY_USER: ${{ github.repository_owner }}
 
+# Niente divergenza locale↔CI: TUTTI i job lanciano lo stesso `tests/ci.sh`.
 jobs:
+  # Hosted (NO KVM): build + Tier1 + per-prodotto(image) → push. Stesso script
+  # che giri in locale con `tests/ci.sh --no-vm`.
   build-test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    permissions: { contents: read, packages: write }
     steps:
       - uses: actions/checkout@v4
 
-      # L'immagine è ~10G: il runner (~14G liberi) va liberato o il build fallisce
-      # con "no space left on device" (era questa la causa del fail).
+      # immagine ~10G vs ~14G liberi → senza questo il build fallisce (era il bug)
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
+        with: { tool-cache: true, large-packages: true, docker-images: true, swap-storage: true }
 
-      - name: Deps host per i test (yq python = sintassi jq; jq già presente)
+      - name: yq (python = sintassi jq; jq già presente sul runner)
         run: |
           pipx install yq || python3 -m pip install --user yq
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
 
-      - name: Build image (podman, come in locale)
-        run: podman build -t "${IMAGE_NAME}:ci" -f Containerfile .
+      - name: Build + test (entrypoint unico, no-VM)
+        run: IMAGE="${IMAGE_NAME}:ci" bash tests/ci.sh --no-vm
 
-      - name: Tier 1 — introspezione (pacchetti/unit/file/codec)
-        run: bash tests/test-image.sh "${IMAGE_NAME}:ci"
-
-      - name: Test per-prodotto (contesto image)
-        run: bash tests/run-products.sh --context image --image "${IMAGE_NAME}:ci"
-
-      - name: Tag (date + sha)
+      - name: Tag date
         id: t
         run: echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
 
-      # Push solo su main/schedule/dispatch (NON su pull_request). I test sopra
-      # gateano: se falliscono, il job si ferma prima del push.
       - name: Login GHCR
         if: github.event_name != 'pull_request'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login -u "${REGISTRY_USER}" --password-stdin "${REGISTRY}"
@@ -68,6 +55,21 @@ jobs:
             podman push "${REGISTRY}/${owner}/${IMAGE_NAME}:${tag}"
           done
 
-  # Tier 2/3 (boot VM, e2e, integrazione) richiedono /dev/kvm → NON girano sui
-  # runner GitHub hosted. Si eseguono in locale (just test-vm / test-vm-gui /
-  # integration) o su un runner self-hosted con KVM. Vedi docs/testing.md.
+  # Self-hosted CON KVM: Tier2/3 (boot VM + smoke + e2e per-prodotto + integrazione
+  # + render grafico). Stesso script: `tests/ci.sh --vm-only`.
+  # Si attiva SOLO se hai registrato un runner self-hosted con label 'kvm' e
+  # impostato la variabile repo HAS_KVM_RUNNER=true (Settings→Secrets and
+  # variables→Actions→Variables). Altrimenti viene saltato (non blocca).
+  e2e-kvm:
+    needs: build-test
+    if: ${{ vars.HAS_KVM_RUNNER == 'true' && github.event_name != 'pull_request' }}
+    runs-on: [self-hosted, kvm]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pull immagine appena pushata
+        run: |
+          owner="$(echo "${REGISTRY_USER}" | tr '[:upper:]' '[:lower:]')"
+          podman pull "${REGISTRY}/${owner}/${IMAGE_NAME}:latest"
+          podman tag  "${REGISTRY}/${owner}/${IMAGE_NAME}:latest" "${IMAGE_NAME}:ci"
+      - name: Tier2/3 in VM (entrypoint unico, vm-only)
+        run: IMAGE="${IMAGE_NAME}:ci" bash tests/ci.sh --vm-only

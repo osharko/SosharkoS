@@ -29,6 +29,41 @@ display/hardware, e cosa è impensabile in CI. Pensato per essere **future-proof
 `test-vm.sh` orchestra: qcow2 (bootc-image-builder) → boot QEMU → SSH → esegue
 `smoke.sh`/`integration.sh`.
 
+## Eseguire la suite — UN solo entrypoint (`tests/ci.sh`)
+
+Pipeline e locale lanciano lo **stesso** script → **zero divergenza** locale↔CI.
+```bash
+just ci          # tests/ci.sh : build + Tier1 + per-prodotto (+ Tier2/3 se c'è /dev/kvm)
+just ci-host     # tests/ci.sh --no-vm : ciò che gira sul runner GHA hosted (no KVM)
+just ci-vm       # tests/ci.sh --vm-only : Tier2/3 (boot/e2e/render) — serve KVM
+just ci-act      # esegue LA workflow GHA in locale, in Docker, via act — pesante (build 10G)
+just lint-ci     # actionlint sulla workflow
+```
+
+### La pipeline esegue gli STESSI test
+`.github/workflows/build.yml` non duplica logica: ogni job chiama `tests/ci.sh`.
+- job **build-test** (GitHub *hosted*, NO KVM) → `tests/ci.sh --no-vm` (build + Tier1 +
+  per-prodotto) → push su GHCR.
+- job **e2e-kvm** (runner **self-hosted con KVM**) → `tests/ci.sh --vm-only`
+  (boot VM + smoke + per-prodotto-vm + integrazione k3d/k9s + render grafico).
+
+I runner GitHub *hosted* **non hanno `/dev/kvm`** → i Tier2/3 girano su self-hosted.
+Per attivarli nella pipeline:
+1. Registra un runner self-hosted con label `kvm` su una macchina con `/dev/kvm`
+   (es. il tuo VPS o il PC): *Settings → Actions → Runners → New self-hosted runner*,
+   al `./config.sh` aggiungi `--labels kvm`.
+2. Imposta la variabile repo `HAS_KVM_RUNNER=true` (*Settings → Secrets and
+   variables → Actions → Variables*).
+→ da lì la pipeline esegue **anche** i Tier2/3, con lo stesso `tests/ci.sh`.
+
+### Validare la pipeline localmente
+- `just ci` — stessi identici test del CI (la no-divergenza è garantita
+  dall'entrypoint unico). È il modo pratico quotidiano.
+- `just ci-act` — esegue *letteralmente* la workflow GHA in Docker (act). Utile
+  per validare YAML/step del runner; pesante per il build 10G.
+
+---
+
 ## Descrittori per-prodotto (`tests/products/*.yaml`)
 
 Ogni prodotto introdotto ha **un YAML** in `tests/products/` che dichiara i suoi
