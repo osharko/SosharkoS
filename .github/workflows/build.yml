@@ -85,14 +85,16 @@ jobs:
         run: IMAGE="${IMAGE_NAME}:ci" bash tests/ci.sh --vm-only
 
   # ISO installabile (Anaconda) generata DALL'immagine OCI con bootc-image-builder.
-  # NON serve KVM (è conversione immagine→ISO). On-demand (Run workflow) o su tag v*.
-  # Output: artifact scaricabile dal run; su tag v* anche allegata alla Release.
+  # NON serve KVM (è conversione immagine→ISO). SOLO on-demand (Run workflow):
+  # produce un artifact scaricabile dal run. L'ISO è troppo grande (~5.5 GB) per
+  # gli asset di Release (limite 2 GB/file): la DISTRIBUZIONE è manuale/esterna
+  # (es. upload su Google Drive + link nelle note della Release). Vedi docs/install.md.
   iso:
     needs: build-test
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       packages: read
     steps:
       - uses: actions/checkout@v4
@@ -114,20 +116,13 @@ jobs:
             quay.io/centos-bootc/bootc-image-builder:latest \
             --type iso --rootfs btrfs --local "${REGISTRY}/${owner}/${IMAGE_NAME}:latest"
           sudo chown -R "$USER:$USER" output && ls -lhR output
-      - name: Upload ISO (artifact scaricabile dal run)
+      - name: Upload ISO (artifact scaricabile dal run → poi su Google Drive)
         uses: actions/upload-artifact@v4
         with:
           name: sosharkos-iso
           path: output/bootiso/install.iso
           retention-days: 14
           compression-level: 0
-      - name: Allega ISO alla Release (solo su tag v*)
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mv output/bootiso/install.iso "sosharkos-${GITHUB_REF_NAME}.iso"
-          gh release create "${GITHUB_REF_NAME}" "sosharkos-${GITHUB_REF_NAME}.iso" \
-            --title "SOsharkOS ${GITHUB_REF_NAME}" \
-            --notes "ISO installabile + immagine OCI: ghcr.io/${{ github.repository_owner }}/sosharkos:latest" \
-            || gh release upload "${GITHUB_REF_NAME}" "sosharkos-${GITHUB_REF_NAME}.iso" --clobber
+      # NB distribuzione: scarica l'artifact (`gh run download <run> -n sosharkos-iso`),
+      # caricalo su Google Drive, poi crea/aggiorna la GitHub Release SOLO con le note
+      # (changelog) + link al Drive. Niente upload del file qui: 5.5 GB > 2 GB limite asset.

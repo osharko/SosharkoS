@@ -7,16 +7,23 @@
 
 ## Dove scaricare l'ISO
 
-L'ISO è prodotta **dalla pipeline** (job `iso`, da immagine OCI con
-bootc-image-builder — non serve KVM):
+> **L'ISO è ~5.5 GB → NON sta negli asset di GitHub Release** (limite 2 GB/file).
+> Modello (tipo *omarchy*): la **Release** porta solo le **note/changelog + il
+> link** al file; il **file ISO è ospitato fuori** (Google Drive). La pipeline
+> serve solo a *produrre* l'ISO, non a distribuirla.
 
-- **On-demand**: GitHub → *Actions* → workflow *"Build, test & push"* → **Run
-  workflow** → a fine run scarichi l'artifact **`sosharkos-iso`**.
-- **Release**: `git tag v0.1.0 && git push --tags` → l'ISO viene allegata alla
-  **GitHub Release** `v0.1.0` (download permanente). ⚠️ se l'ISO supera ~2 GB il
-  limite asset di Release può rifiutarla → usa l'artifact, o ospitala esterna
-  (VPS/Backblaze) per download permanenti grandi.
+- **Produrre l'ISO (CI, on-demand)**: GitHub → *Actions* → workflow *"Build, test
+  & push"* → **Run workflow** → a fine run scarichi l'artifact **`sosharkos-iso`**
+  (job `iso`, da immagine OCI con bootc-image-builder — non serve KVM). Da CLI:
+  `gh run download <run-id> -n sosharkos-iso`.
+- **Distribuire (manuale)**: carica `install.iso` su **Google Drive**, poi crea
+  una **GitHub Release** (tag `vX.Y.Z`) con il **changelog** e il **link al
+  Drive**. Niente file negli asset.
 - **In locale**: `just iso` → `output/bootiso/install.iso`.
+
+> 💡 La via "vera" bootc spesso **non richiede ISO**: installa direttamente
+> dall'immagine OCI con `bootc install to-disk` (§1). L'ISO serve solo per una
+> chiavetta bootabile / installer Anaconda.
 
 Tutti installano poi l'immagine bootc e si aggiornano con `bootc upgrade`
 (rollback istantaneo).
