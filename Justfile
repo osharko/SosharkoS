@@ -122,5 +122,15 @@ test-vm:
 test-vm-gui:
     bash tests/test-vm-gui.sh {{IMAGE_NAME}}:{{IMAGE_TAG}}
 
-# Gate locale completo: build + introspezione
-ci: build test
+# Mirror LOCALE del job CI (.github/workflows/build.yml): build + Tier1 +
+# per-prodotto. Se questo passa, la pipeline GHA dovrebbe passare.
+ci: build test test-products
+
+# Lint della workflow GHA (actionlint se presente)
+lint-ci:
+    @command -v actionlint >/dev/null && actionlint .github/workflows/*.yml \
+      || echo "actionlint non installato (go install github.com/rhysd/actionlint/cmd/actionlint@latest)"
+
+# Validazione COMPLETA locale: pipeline + run + e2e + integrazione (richiede KVM)
+validate: lint-ci ci test-vm test-vm-gui
+    @echo "→ integrazione (k3d/k9s) gira dentro test-vm; per il set completo: just test-vm"

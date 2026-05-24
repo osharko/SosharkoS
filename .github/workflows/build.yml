@@ -1,16 +1,13 @@
-name: Build & push OCI image
+name: Build, test & push
 
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "README.md"
-      - "ROADMAP.md"
-      - "docs/**"
-      - ".vscode/**"
+    paths-ignore: ["README.md", "ROADMAP.md", "docs/**", ".vscode/**", "tests/**"]
+  pull_request:
+    branches: [main]
   schedule:
-    # Cron daily 10:05 UTC — pulls latest fedora-bootc + Cachy kernel
-    - cron: "5 10 * * *"
+    - cron: "5 10 * * *"   # daily: ripulisce upstream (fedora-bootc + Cachy kernel)
   workflow_dispatch:
 
 env:
@@ -19,74 +16,58 @@ env:
   REGISTRY_USER: ${{ github.repository_owner }}
 
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      id-token: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install buildah & skopeo
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y buildah skopeo
-
-      - name: Set image tag (date + short sha)
-        id: tags
-        run: |
-          echo "date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
-          echo "sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
-
-      - name: Build OCI image with buildah
-        run: |
-          buildah bud \
-            --tag ${{ env.IMAGE_NAME }}:latest \
-            --tag ${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.date }} \
-            --tag ${{ env.IMAGE_NAME }}:${{ steps.tags.outputs.sha }} \
-            --file Containerfile \
-            .
-
-      - name: Login to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | buildah login -u ${{ env.REGISTRY_USER }} --password-stdin ${{ env.REGISTRY }}
-
-      - name: Push image (tutti i tag)
-        run: |
-          for tag in latest ${{ steps.tags.outputs.date }} ${{ steps.tags.outputs.sha }}; do
-            buildah push ${{ env.IMAGE_NAME }}:$tag \
-              docker://${{ env.REGISTRY }}/${{ env.REGISTRY_USER }}/${{ env.IMAGE_NAME }}:$tag
-          done
-
-      - name: Image digest
-        run: |
-          buildah inspect ${{ env.IMAGE_NAME }}:latest | jq '.Digest'
-
-  # Job opzionale: builda ISO e la mette come release artifact (limit 2GB/file
-  # → potrebbe fallire per immagini grosse; in tal caso skip release).
-  iso:
-    needs: build
-    if: github.event_name == 'workflow_dispatch'  # solo manuale, ISO costose
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Build ISO via bootc-image-builder
-        run: |
-          mkdir -p output
-          sudo podman run --rm --privileged \
-            --security-opt label=type:unconfined_t \
-            -v $(pwd)/output:/output \
-            -v /var/lib/containers/storage:/var/lib/containers/storage \
-            quay.io/centos-bootc/bootc-image-builder:latest \
-            --type iso --rootfs btrfs \
-            ghcr.io/${{ env.REGISTRY_USER }}/${{ env.IMAGE_NAME }}:latest
-      - name: Upload ISO as artifact
-        uses: actions/upload-artifact@v4
+
+      # L'immagine è ~10G: il runner (~14G liberi) va liberato o il build fallisce
+      # con "no space left on device" (era questa la causa del fail).
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
         with:
-          name: sosharkos-iso
-          path: output/bootiso/install.iso
-          retention-days: 7
+          tool-cache: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Deps host per i test (yq python = sintassi jq; jq già presente)
+        run: |
+          pipx install yq || python3 -m pip install --user yq
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+
+      - name: Build image (podman, come in locale)
+        run: podman build -t "${IMAGE_NAME}:ci" -f Containerfile .
+
+      - name: Tier 1 — introspezione (pacchetti/unit/file/codec)
+        run: bash tests/test-image.sh "${IMAGE_NAME}:ci"
+
+      - name: Test per-prodotto (contesto image)
+        run: bash tests/run-products.sh --context image --image "${IMAGE_NAME}:ci"
+
+      - name: Tag (date + sha)
+        id: t
+        run: echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+      # Push solo su main/schedule/dispatch (NON su pull_request). I test sopra
+      # gateano: se falliscono, il job si ferma prima del push.
+      - name: Login GHCR
+        if: github.event_name != 'pull_request'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login -u "${REGISTRY_USER}" --password-stdin "${REGISTRY}"
+
+      - name: Push image
+        if: github.event_name != 'pull_request'
+        run: |
+          owner="$(echo "${REGISTRY_USER}" | tr '[:upper:]' '[:lower:]')"
+          for tag in latest "${{ steps.t.outputs.date }}" "$(echo ${{ github.sha }} | cut -c1-7)"; do
+            podman tag "${IMAGE_NAME}:ci" "${REGISTRY}/${owner}/${IMAGE_NAME}:${tag}"
+            podman push "${REGISTRY}/${owner}/${IMAGE_NAME}:${tag}"
+          done
+
+  # Tier 2/3 (boot VM, e2e, integrazione) richiedono /dev/kvm → NON girano sui
+  # runner GitHub hosted. Si eseguono in locale (just test-vm / test-vm-gui /
+  # integration) o su un runner self-hosted con KVM. Vedi docs/testing.md.
