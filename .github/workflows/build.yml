@@ -35,29 +35,18 @@ jobs:
           pipx install yq || python3 -m pip install --user yq
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      # podman storage sul disco /mnt (~80G) invece del / (~stretto): evita che
-      # il build 10G saturi il disco e faccia fallire i `podman run` dei test.
-      - name: podman storage su /mnt
-        run: |
-          sudo mkdir -p /mnt/podman && sudo chown "$USER:$USER" /mnt/podman
-          mkdir -p ~/.config/containers
-          printf '[storage]\ndriver = "overlay"\ngraphroot = "/mnt/podman/storage"\n' > ~/.config/containers/storage.conf
-          df -h / /mnt | sed 's/^/  /'
-          podman info --format 'graphroot={{.Store.GraphRoot}}' || true
-
+      # Nome immagine COMPLETO localhost/… : su GHA il nome corto verrebbe
+      # risolto su docker.io ("access denied"), non sull'immagine locale.
       - name: Build + test (entrypoint unico, no-VM)
-        run: IMAGE="${IMAGE_NAME}:ci" bash tests/ci.sh --no-vm
+        run: IMAGE="localhost/${IMAGE_NAME}:ci" bash tests/ci.sh --no-vm
 
-      # Gira SEMPRE: se i test sono falliti, mostra disco + l'errore REALE di
-      # podman run (lo stderr che i test sopprimono).
       - name: Diagnostica
         if: always()
         run: |
-          echo "=== df ==="; df -h / /mnt
-          echo "=== images ==="; podman images
-          echo "=== sanity podman run (stderr visibile) ==="
-          podman run --rm --network=none --entrypoint "" "${IMAGE_NAME}:ci" \
-            bash -lc 'echo SANITY_OK; command -v niri; command -v podman' 2>&1 || echo "SANITY FAILED"
+          df -h /
+          podman images
+          podman run --rm --network=none --entrypoint "" "localhost/${IMAGE_NAME}:ci" \
+            bash -lc 'echo SANITY_OK; command -v niri' 2>&1 || echo "SANITY FAILED"
 
       - name: Tag date
         id: t
@@ -72,7 +61,7 @@ jobs:
         run: |
           owner="$(echo "${REGISTRY_USER}" | tr '[:upper:]' '[:lower:]')"
           for tag in latest "${{ steps.t.outputs.date }}" "$(echo ${{ github.sha }} | cut -c1-7)"; do
-            podman tag "${IMAGE_NAME}:ci" "${REGISTRY}/${owner}/${IMAGE_NAME}:${tag}"
+            podman tag "localhost/${IMAGE_NAME}:ci" "${REGISTRY}/${owner}/${IMAGE_NAME}:${tag}"
             podman push "${REGISTRY}/${owner}/${IMAGE_NAME}:${tag}"
           done
 
