@@ -172,6 +172,28 @@ RUN dnf -y install \
 # TODO §15: xpadneo/xone (Xbox wireless) via akmod contro kernel CachyOS — da
 # validare; fallback steam-devices (sopra) già attivo.
 
+# ── Waydroid (Android-in-un-container, stile WSA) — §16 ──────────
+# App Android in finestre native su Niri/Wayland. `waydroid` è in BASE Fedora 44
+# (verificato dry-run: v1.6.2 dal repo 'fedora'; NIENTE COPR — il COPR
+# aleasto/waydroid ha solo 1.3.4, più vecchio). Tira lxc/dnsmasq/python3-gbinder/
+# python3-dbus/python3-gobject (tutti da repo base). Solo il PACCHETTO va
+# nell'immagine: `waydroid init` (rete + scrittura in /var) gira a RUNTIME.
+#
+# Binder kernel (CRITICO): Waydroid richiede CONFIG_ANDROID_BINDER_IPC +
+# CONFIG_ANDROID_BINDERFS. Verificato sul config del kernel CachyOS COPR
+# (bieszczaders/kernel-cachyos 7.0.8, /usr/lib/modules/$KVER/config):
+#     CONFIG_ANDROID_BINDER_IPC=y   CONFIG_ANDROID_BINDERFS=y
+# entrambi BUILT-IN (=y) → NESSUN /etc/modules-load.d/*.conf necessario (non
+# esiste alcun modulo binder_linux.ko da caricare; il filesystem binderfs è già
+# compilato nel kernel). Coerente con il kernel host Arch CachyOS dell'utente.
+RUN dnf -y install waydroid lxc dnsmasq python3-gbinder python3-dbus python3-gobject && \
+    dnf clean all
+# waydroid-container.service: avvio del container LXC di Android. Non fa nulla
+# finché l'utente non esegue `sudo waydroid init -s GAPPS` al primo uso (la init
+# scarica le immagini system/vendor in /var, scrivibile su bootc). Abilitarlo
+# qui è sicuro: parte solo quando l'immagine Android esiste.
+RUN systemctl enable waydroid-container.service
+
 # ═════ Layer 7 · Fonts (§14) ═════════════════════════════════════
 RUN dnf -y install \
         jetbrains-mono-fonts cascadia-code-fonts fontawesome-fonts-all \

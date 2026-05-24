@@ -75,6 +75,10 @@ Renderla davvero condivisibile.
 
 ## Backlog / future ideas
 
+- [x] **Waydroid** (Android in container LXC, app come finestre native su Niri) —
+      pacchetto nell'immagine (base Fedora 44, binder built-in nel kernel CachyOS);
+      `waydroid init -s GAPPS` + certificazione Play Store a runtime (§16).
+- [x] **BoxBuddy** (GUI distrobox manager) — flatpak al 1° boot (§4).
 - [ ] **Doppia ISO**: secondo desktop oltre a Niri/Noctalia (es. GNOME) —
       stesso base+kernel+launchpad, DE diverso
 - [ ] Containerfile multi-arch (aarch64 oltre x86_64)

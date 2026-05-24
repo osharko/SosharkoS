@@ -14,7 +14,7 @@ EXPECT_BINS=(
   # terminal utils (§2) — mdcat/lazygit via onboarding (mise/brew), non nell'image
   bat eza fd rg fzf jq yq gum chafa
   # emulazione/traduzione (§16) — wine via Bottles (flatpak), non nell'image
-  gamescope
+  gamescope waydroid
   # launchpad (§4)
   podman docker buildah skopeo distrobox
   kubectl virt-manager quickemu quickget mise flatpak
@@ -52,6 +52,8 @@ EXPECT_RPMS=(
   # codec (§9)
   rpmfusion-free-release rpmfusion-nonfree-release
   libavcodec-freeworld
+  # emulazione (§16) — Waydroid (Android in container, base Fedora 44)
+  waydroid lxc python3-gbinder
   # editor
   codium
 )
@@ -63,6 +65,7 @@ EXPECT_UNITS_ENABLED=(
   podman.socket
   libvirtd.service
   sosharkos-flatpak-setup.service
+  waydroid-container.service
 )
 
 # ─── File che devono esistere nell'immagine ─────────────────────────
@@ -87,4 +90,5 @@ EXPECT_FLATPAKS=(
   com.github.marktext.marktext
   com.jetbrains.IntelliJ-IDEA-Community
   com.valvesoftware.Steam
+  io.github.dvlv.boxbuddyrs
 )

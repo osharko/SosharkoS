@@ -6,6 +6,7 @@ md.obsidian.Obsidian
 com.github.marktext.marktext
 com.jetbrains.IntelliJ-IDEA-Community
 com.usebottles.bottles
+io.github.dvlv.boxbuddyrs
 com.rafaelmardojai.Blanket
 com.valvesoftware.Steam
 # overlay/post-fx per i giochi flatpak (Vulkan layer extensions)

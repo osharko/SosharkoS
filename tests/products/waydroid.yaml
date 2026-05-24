@@ -1,0 +1,43 @@
+product: waydroid
+summary: Waydroid — Android in un container LXC, app in finestre native (§16)
+category: emulation
+package: waydroid
+binary: waydroid
+tests:
+  - name: binario waydroid presente (immagine)
+    level: headless
+    context: image
+    cmd: command -v waydroid
+  - name: pacchetto waydroid installato (base Fedora 44)
+    level: headless
+    context: image
+    cmd: rpm -q waydroid
+  - name: deps runtime presenti (lxc/dnsmasq/python3-gbinder)
+    level: headless
+    context: image
+    cmd: rpm -q lxc dnsmasq python3-gbinder python3-dbus python3-gobject
+  - name: kernel CachyOS con binder built-in (=y)
+    level: headless
+    context: image
+    cmd: KVER=$(ls /usr/lib/modules | grep cachyos | head -1); C=/usr/lib/modules/$KVER/config; grep -qx CONFIG_ANDROID_BINDER_IPC=y "$C" && grep -qx CONFIG_ANDROID_BINDERFS=y "$C"
+  - name: nessun modules-load.d binder (kernel built-in, atteso)
+    level: headless
+    context: image
+    cmd: '! test -e /etc/modules-load.d/waydroid-binder.conf'
+  - name: waydroid-container.service enabled
+    level: headless
+    context: image
+    cmd: '[ "$(systemctl is-enabled waydroid-container.service 2>/dev/null)" = enabled ]'
+  - name: waydroid init -s GAPPS (primo uso)
+    level: display
+    steps: |
+      Su VM grafica (🟡): `sudo waydroid init -s GAPPS` scarica system/vendor in
+      /var (rete). Poi `sudo systemctl start waydroid-container` e
+      `waydroid session start`; `waydroid show-full-ui` mostra Android su Niri.
+  - name: app Android in finestra propria + Play Store certificato
+    level: human
+    steps: |
+      Su HW reale (🔴, serve GPU per il rendering accelerato): un'app Android
+      gira in una finestra Niri dedicata. Per Play Store: registra l'android_id
+      del device su https://www.google.com/android/uncertified/ (certificazione),
+      poi login account Google. Richiede account + GPU reale → solo umano.

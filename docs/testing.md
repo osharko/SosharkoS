@@ -77,7 +77,7 @@ bash tests/run-products.sh --context vm --ssh "ssh -p 2222 …"   # nella VM
 - `level: display|human` → stampa la checklist (`steps`) da validare a mano.
 
 **Aggiungere un prodotto = aggiungere un YAML** (vedi `tests/products/README.md`).
-Stato attuale: 23 descrittori, contesto image **21 ✓ / 0 ✗** (gli altri sono
+Stato attuale: 25 descrittori, contesto image **28 ✓ / 0 ✗** (gli altri sono
 vm/display/human). La matrice qui sotto è la vista d'insieme; i YAML sono la fonte.
 
 ---
@@ -229,8 +229,8 @@ Scenari composti, eseguiti in VM (`integration.sh`):
    `expectations.sh` (unit) e, se sensato, in `integration.sh`.
 
 ## Stato corrente dei test
-- Tier 0 `bootc lint`: ✅ · Tier 1 `test-image.sh`: ✅ **92/0** · per-prodotto
-  (image): ✅ **21/0**
+- Tier 0 `bootc lint`: ✅ · Tier 1 `test-image.sh`: ✅ **98/0** · per-prodotto
+  (image): ✅ **28/0**
 - Tier 2 `test-vm.sh` → `smoke.sh`: ✅ **14✓/4!/0✗** (boot + SSH + docker +
   distrobox + kubectl + mise + flathub + decoder h264/hevc/av1/aac; i WARN sono
   bluetooth/libvirtd/pipewire-user/vainfo, attesi in VM headless)

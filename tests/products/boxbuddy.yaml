@@ -1,0 +1,18 @@
+product: boxbuddy
+summary: BoxBuddy — GUI manager per distrobox (Flatpak, 1° boot)
+category: container
+flatpak: io.github.dvlv.boxbuddyrs
+tests:
+  - name: BoxBuddy listato in flatpaks.list (immagine)
+    level: headless
+    context: image
+    cmd: grep -qx io.github.dvlv.boxbuddyrs /usr/share/sosharkos/flatpaks.list
+  - name: flatpak presente (post 1° boot)
+    level: headless
+    context: vm
+    cmd: flatpak info io.github.dvlv.boxbuddyrs
+  - name: avvio GUI + gestione box distrobox
+    level: display
+    steps: |
+      `flatpak run io.github.dvlv.boxbuddyrs`: la finestra si apre, elenca le
+      box distrobox esistenti e permette di crearne/avviarne una.

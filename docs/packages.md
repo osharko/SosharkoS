@@ -67,6 +67,9 @@ Niente è ancora nel Containerfile finché non chiudiamo questo doc.
 - [x] 🟢 podman · buildah · skopeo · podman-compose
 - [x] 🟢 **docker** (`moby-engine`) + docker.socket
 - [x] 🟢 **distrobox**
+  - [x] 🟠 **BoxBuddy** (`io.github.dvlv.boxbuddyrs`, flatpak 1° boot) — GUI per
+        gestire le box distrobox (crea/avvia/elimina, app graphiche). Solo
+        flatpak ufficiale → niente nativo; va in `flatpaks.list`, non nell'image.
 - [x] 🟢 **kubectl** (`kubernetes-client`)  ·  helm/k9s/krew → 🟡 mise per-utente
 - [x] 🟢 **virt-manager** + qemu-kvm + libvirt  ·  🟢 **quickemu** (incl. quickget)
 - [x] 🟢 **bottles** mi sere qualcosa di facilmente funzionante e configurabile, gnome boxes mi pare avesse problemi nel propagare l'ip, ma altrimenti idealmente qualcosa che sia in grado di essere configurato e avviarsi velocemente e che propaghi l'ip sulla LAN (simil proxmox per intenderci) e con una buona dashboard per monitorare, interrompere, etc
@@ -234,6 +237,41 @@ Niente è ancora nel Containerfile finché non chiudiamo questo doc.
 > vkBasalt, MangoHud + opzionali EmuDeck/RetroDECK/Decky.
 
 **App Linux di altre distro** → 🟢 **distrobox** (già §4)
+
+**App Android (stile WSA — Windows Subsystem for Android)**
+- [x] 🟢 **Waydroid** — Android in un container **LXC**, app come **finestre native**
+      su Niri/Wayland. `waydroid` è in **base Fedora 44** (verificato dry-run:
+      `waydroid-1.6.2` dal repo `fedora`; **NIENTE COPR** — il COPR
+      `aleasto/waydroid` ha solo `1.3.4`, più vecchio → preferiamo la base, più
+      stabile e non flaky). Deps: 🟢 `lxc` `dnsmasq` `python3-gbinder`
+      `python3-dbus` `python3-gobject` (tutte base Fedora). Va **nell'immagine**
+      (solo il pacchetto), in `Containerfile` Layer 6e (gaming/emulazione).
+  - **Binder kernel (CRITICO)**: Waydroid richiede `CONFIG_ANDROID_BINDER_IPC`
+    e `CONFIG_ANDROID_BINDERFS`. Verificato sul config del kernel CachyOS COPR
+    (`bieszczaders/kernel-cachyos` 7.0.8, in
+    `/usr/lib/modules/$KVER/config`): **`CONFIG_ANDROID_BINDER_IPC=y` +
+    `CONFIG_ANDROID_BINDERFS=y` → entrambi BUILT-IN (`=y`)**. Quindi NESSUN
+    `/etc/modules-load.d/*.conf` (non esiste un `binder_linux.ko` da caricare; il
+    filesystem binderfs è compilato nel kernel — il pacchetto monta
+    `dev-binderfs.mount` su `/dev/binderfs`). Coerente col kernel host Arch
+    CachyOS dell'utente (anche lì `=y`+`=y`).
+  - **Dati in `/var`**: `waydroid init` scarica le immagini system/vendor e
+    scrive in `/var` (scrivibile su bootc) → **NON** si esegue a build-time
+    (serve rete + scrittura). Solo il pacchetto è cotto nell'immagine.
+  - **Primo uso (runtime, l'utente)**:
+    1. `sudo waydroid init -s GAPPS` — scarica system/vendor con Google Apps
+       (GAPPS). Senza `-s GAPPS` parte con `VANILLA` (no Play Store).
+    2. `sudo systemctl start waydroid-container` (l'unit è già `enabled`
+       nell'immagine: parte solo dopo che l'init ha creato le immagini Android).
+    3. `waydroid session start` + `waydroid show-full-ui` (o avvia singole app).
+  - **Play Store — certificazione (richiesta con GAPPS)**: il device va
+    certificato o il Play Store dice "not certified". Recupera l'`android_id`
+    (`sudo waydroid shell`→`ANDROID_RUNTIME_ROOT=/apex/com.android.runtime
+    sqlite3 /data/data/com.google.android.gsf/databases/gservices.db
+    "select * from main where name = 'android_id';"`) e registralo su
+    **https://www.google.com/android/uncertified/**, poi attendi/riavvia.
+- [ ] (alt) Android via emulatore (Genymotion/Anbox) — scartato: Waydroid è il
+      più integrato con Wayland e mantenuto.
 
 **App Windows (traduzione/compat)**
 - [x] 🟢 **Wine** + **winetricks** (Fedora repos) — base per app Windows
