@@ -3,7 +3,7 @@ name: Build, test & push
 on:
   push:
     branches: [main]
-    paths-ignore: ["README.md", "ROADMAP.md", "docs/**", ".vscode/**"]
+    paths-ignore: ["README.md", "ROADMAP.md", "CLAUDE.md", "docs/**", ".vscode/**"]
   pull_request:
     branches: [main]
   schedule:

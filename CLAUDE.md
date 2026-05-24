@@ -113,8 +113,29 @@ just push       # → ghcr.io/osharko/sosharkos:latest (serve podman login ghcr.
   desktop (es. GNOME al posto di Niri/Noctalia) → Containerfile separato o build
   arg; aggiungi una matrice di test per la spin.
 
+## Test & CI — UN solo entrypoint (`tests/ci.sh`), zero divergenza locale↔CI
+Pipeline e locale lanciano lo **stesso** script:
+- `just ci` (tutto; con `/dev/kvm` anche boot/e2e/render) · `just ci-host`
+  (`--no-vm`) · `just ci-vm` (`--vm-only`) · `just ci-act` (la workflow GHA in
+  Docker via **act**) · `just lint-ci` (actionlint).
+- `.github/workflows/build.yml`: job **build-test** (GitHub *hosted*, no KVM) =
+  `ci.sh --no-vm` (build + Tier1 + per-prodotto → push GHCR); job **e2e-kvm**
+  (runner **self-hosted con KVM**, opt-in `vars.HAS_KVM_RUNNER=true`) =
+  `ci.sh --vm-only` (boot VM + smoke + per-prodotto-vm + integrazione k3d/k9s +
+  render). I runner hosted non hanno `/dev/kvm` → i Tier2/3 vanno su self-hosted
+  con label `kvm` (vedi `docs/testing.md`).
+- **Test per-prodotto**: `tests/products/<nome>.yaml` (un YAML per pacchetto:
+  unit headless + checklist umana) eseguiti da `run-products.sh`. Aggiungere un
+  prodotto = aggiungere un YAML. 3 livelli: 🟢 headless · 🟡 grafico-QEMU · 🔴 HW reale.
+
 ## Stato attuale
-Build VERDE **10G**, Tier 1 **92/0**, `bootc lint` ok, render qcow2 (+vmdk/vpc/
-ovf/gce) ok, **boota in QEMU** con servizi su. Repo git locale (vedi `git log`).
-Backlog: smoke più robusto, COPR plugin Noctalia, xpadneo/xone, WinBoat, CI/GHCR,
-pulizia /var. Dettagli e piano test in `docs/testing.md`.
+- Remote: **github.com/osharko/SosharkoS** (push via chiave SSH / 1Password agent;
+  clonabile da qualsiasi macchina, partire da questo CLAUDE.md).
+- Build VERDE **10G**, `bootc lint` ok. **Tier1 92/0**, **per-prodotto(image) 21/0**,
+  **smoke VM 14/0** (docker/distrobox/kubectl/mise/flathub + decoder h264/hevc/av1/aac),
+  **render desktop in QEMU validato** (niri+Noctalia, grim 1280×800). qcow2/vmdk/vpc/
+  ovf/gce + boot ok.
+Backlog: audio in QEMU (routing pipewire→hda), COPR per gpu-screen-recorder/
+wl-screenrec/gifski (plugin Noctalia screen-recorder), xpadneo/xone, WinBoat,
+`install-to-disk` test, registrare un runner self-hosted KVM per i Tier2/3 in CI.
+Dettagli e piano test onesto (cosa è automatizzabile / solo HW): `docs/testing.md`.
