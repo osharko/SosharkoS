@@ -145,21 +145,16 @@ RUN dnf config-manager addrepo --from-repofile=https://brave-browser-rpm-release
 RUN dnf -y install mpv imv evince telegram-desktop && dnf clean all
 
 # ═════ Layer 6d · Vault (§5) + Antivirus (§6) ════════════════════
+# repo via printf (apici singoli → $basearch resta letterale per dnf; niente
+# heredoc che buildah interpreta male se splittato dal RUN d'install).
 RUN rpm --import https://downloads.1password.com/linux/keys/1password.asc && \
-    cat > /etc/yum.repos.d/1password.repo <<'EOF'
-[1password]
-name=1Password
-baseurl=https://downloads.1password.com/linux/rpm/stable/$basearch
-enabled=1
-gpgcheck=1
-repo_gpgcheck=0
-gpgkey=https://downloads.1password.com/linux/keys/1password.asc
-EOF
+    printf '[1password]\nname=1Password\nbaseurl=https://downloads.1password.com/linux/rpm/stable/$basearch\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=0\ngpgkey=https://downloads.1password.com/linux/keys/1password.asc\n' \
+        > /etc/yum.repos.d/1password.repo
 # install con RETRY: la metadata di downloads.1password.com è flaky su CI
-# ("No match for argument: 1password"). rpm -q finale: fallisce solo se davvero manca.
+# ("No match for argument: 1password"). rpm -q finale: fallisce solo se manca.
 RUN for i in 1 2 3 4 5; do \
         dnf -y --refresh install 1password 1password-cli && break; \
-        echo "↻ retry 1password ($i)"; dnf clean all; sleep 15; \
+        echo "retry 1password ($i)"; dnf clean all; sleep 15; \
     done; \
     rpm -q 1password 1password-cli && dnf clean all
 RUN dnf -y install clamav clamd clamav-update clamtk rkhunter chkrootkit && dnf clean all
