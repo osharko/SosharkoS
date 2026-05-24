@@ -81,6 +81,24 @@ fi
 waydroid prop set persist.waydroid.gralloc gbm 2>/dev/null \
     && ok "persist.waydroid.gralloc = gbm (hint AMD/mesa)." || true
 
+# ── 4b. Assistente vocale OFF di default (Gemini/Google) ────────────────────
+# Su Waydroid un tasto host inoltrato come KEYCODE_ASSIST lancia l'assistente
+# Google/Gemini, che ruba il focus e rende il sistema inutilizzabile. Lo
+# disattiviamo a OGNI avvio (idempotente). Per RITENERLO: crea il file
+# ~/.config/androidbox/keep-assistant e questo step viene saltato.
+if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/androidbox/keep-assistant" ]; then
+    say "Assistente vocale: lasciato invariato (keep-assistant presente)."
+else
+    say "Disabilito l'assistente vocale (Gemini/Google) — default androidbox."
+    for k in assistant voice_interaction_service voice_recognition_service; do
+        sudo waydroid shell -- settings put secure "$k" "" 2>/dev/null || true
+    done
+    for k in assist_long_press_home_enabled assist_gesture_enabled search_long_press_home_enabled; do
+        sudo waydroid shell -- settings put secure "$k" 0 2>/dev/null || true
+    done
+    ok "Assistente vocale OFF (per ritenerlo: file ~/.config/androidbox/keep-assistant)."
+fi
+
 # ── 5. Cartelle condivise host↔Android (bind-mount, §16) ────────────────────
 # Best-effort + idempotente: se non c'è una config, no-op. I bind sono legati al
 # lifecycle (li ri-applichiamo a OGNI start, li smonta androidbox-stop) → niente
@@ -92,6 +110,19 @@ if command -v androidbox-share >/dev/null; then
         || warn "Nessuna condivisione applicata (config vuota? Android non pronto?)."
 else
     warn "androidbox-share non trovato: salto le cartelle condivise."
+fi
+
+# ── 6. Launcher Android visibili nel menu host ──────────────────────────────
+# Waydroid rigenera i .desktop con NoDisplay=true a OGNI avvio sessione → le app
+# sparirebbero dal launcher. Diamo a Waydroid qualche secondo per rigenerarli,
+# poi li rendiamo visibili e aggiorniamo la cache del menu applicazioni.
+apps_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+sleep 4
+if ls "$apps_dir"/waydroid.*.desktop >/dev/null 2>&1; then
+    sed -i 's/^NoDisplay=true/NoDisplay=false/' "$apps_dir"/waydroid.*.desktop 2>/dev/null || true
+    command -v update-desktop-database >/dev/null \
+        && update-desktop-database "$apps_dir" 2>/dev/null || true
+    ok "Launcher Android resi visibili nel menu (NoDisplay=false)."
 fi
 
 cat <<'EOF'
