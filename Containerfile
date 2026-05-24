@@ -18,7 +18,7 @@
 FROM quay.io/fedora/fedora-bootc:44
 
 # ─── DNF tuning + plugin COPR (dnf5) ─────────────────────────────
-RUN sed -i '/^\[main\]/a max_parallel_downloads=10\nfastestmirror=True' /etc/dnf/dnf.conf && \
+RUN sed -i '/^\[main\]/a max_parallel_downloads=10\nfastestmirror=True\nretries=10\ntimeout=60' /etc/dnf/dnf.conf && \
     dnf -y install dnf5-plugins && dnf clean all
 
 # ═════ Layer 1 · RPM Fusion + Cisco openh264 (codec §9, Steam §7) ═
@@ -146,7 +146,7 @@ RUN dnf -y install mpv imv evince telegram-desktop && dnf clean all
 
 # ═════ Layer 6d · Vault (§5) + Antivirus (§6) ════════════════════
 RUN rpm --import https://downloads.1password.com/linux/keys/1password.asc && \
-    cat > /etc/yum.repos.d/1password.repo <<'EOF' && dnf -y install 1password 1password-cli && dnf clean all
+    cat > /etc/yum.repos.d/1password.repo <<'EOF'
 [1password]
 name=1Password
 baseurl=https://downloads.1password.com/linux/rpm/stable/$basearch
@@ -155,6 +155,13 @@ gpgcheck=1
 repo_gpgcheck=0
 gpgkey=https://downloads.1password.com/linux/keys/1password.asc
 EOF
+# install con RETRY: la metadata di downloads.1password.com è flaky su CI
+# ("No match for argument: 1password"). rpm -q finale: fallisce solo se davvero manca.
+RUN for i in 1 2 3 4 5; do \
+        dnf -y --refresh install 1password 1password-cli && break; \
+        echo "↻ retry 1password ($i)"; dnf clean all; sleep 15; \
+    done; \
+    rpm -q 1password 1password-cli && dnf clean all
 RUN dnf -y install clamav clamd clamav-update clamtk rkhunter chkrootkit && dnf clean all
 
 # ═════ Layer 6e · Gaming + controller + emulazione (§7/§15/§16) ══
